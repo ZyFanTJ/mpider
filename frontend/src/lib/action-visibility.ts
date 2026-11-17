@@ -17,7 +17,12 @@ export function taskPrimaryAction(task: Task, source?: Source): "pause" | "resum
   return null;
 }
 
-export function sourceBodyAction(articleCount: number, bodyCount?: number): "download" | "export" | null {
-  if (articleCount <= 0 || bodyCount == null || !Number.isInteger(bodyCount) || bodyCount < 0 || bodyCount > articleCount) return null;
-  return bodyCount === articleCount ? "export" : "download";
+export function sourceBodyAvailability(total: number, downloaded?: number) {
+  const known = Number.isInteger(total) && total >= 0 && downloaded != null
+    && Number.isInteger(downloaded) && downloaded >= 0 && downloaded <= total;
+  return {
+    known,
+    canDownload: known && downloaded < total,
+    canExport: known && downloaded > 0,
+  };
 }

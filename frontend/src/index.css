@@ -173,3 +173,26 @@
     color: hsl(var(--primary-foreground));
   }
 }
+
+.task-active { color: hsl(var(--link)); }
+.task-neutral { color: hsl(var(--muted-foreground)); }
+.task-success { color: color-mix(in srgb, hsl(var(--success)) 72%, hsl(var(--foreground))); }
+.task-wait { color: color-mix(in srgb, hsl(var(--warning)) 65%, hsl(var(--foreground))); }
+.task-error { color: hsl(var(--destructive)); }
+.task-badge { background-color: color-mix(in srgb, currentColor 10%, transparent); }
+.task-fill, .task-sweep {
+  display: block;
+  height: 100%;
+  background: currentColor;
+  border-radius: inherit;
+  transform-origin: left center;
+}
+.task-sweep { width: 36%; }
+@media (prefers-reduced-motion: no-preference) {
+  .task-fill { transition: transform 360ms cubic-bezier(.2,.65,.3,1); }
+  .task-sweep { animation: task-travel 1.65s ease-in-out infinite alternate; }
+}
+@keyframes task-travel {
+  from { transform: translateX(0); }
+  to { transform: translateX(178%); }
+}

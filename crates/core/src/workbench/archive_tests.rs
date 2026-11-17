@@ -82,6 +82,98 @@ fn setup(url: &str) -> (Arc<Store>, i64, i64, PathBuf) {
     (store, id, task, dir)
 }
 #[tokio::test]
+async fn download_30_of_72_without_images_then_export_only_downloaded_articles() {
+    let (host, _, observed, server) = server().await;
+    let (store, _, initial, root) = setup(&format!("{host}/body"));
+    store.wb_task_state(initial, "cancelled", None).unwrap();
+    let mut ids = Vec::new();
+    for n in 2..=72 {
+        ids.push(
+            store
+                .upsert_article(
+                    "SYNTHETIC",
+                    &n.to_string(),
+                    1,
+                    &ArticleFields {
+                        published_at: Some(n as f64),
+                        content_url: Some(format!("{host}/body?n={n}")),
+                        cover: Some(format!("{host}/cover")),
+                        ..Default::default()
+                    },
+                )
+                .unwrap(),
+        );
+    }
+    let task = store
+        .wb_download_source_with_options("SYNTHETIC", Some(30), false)
+        .unwrap();
+    assert_eq!(task.queued, 30);
+    let task_id = task.task_id.unwrap();
+    let expected: Vec<_> = ids.iter().rev().take(30).copied().collect();
+    assert_eq!(
+        store.wb_task(task_id).unwrap().target["article_ids"],
+        json!(expected)
+    );
+    let worker = tokio::spawn(run(store.clone(), root.clone()));
+    tokio::time::timeout(Duration::from_secs(30), async {
+        while store.wb_task(task_id).unwrap().state != "done" {
+            tokio::time::sleep(Duration::from_millis(30)).await;
+        }
+    })
+    .await
+    .unwrap();
+    worker.abort();
+    let _ = worker.await;
+    let calls = observed.lock().unwrap().clone();
+    assert_eq!(calls.len(), 30);
+    assert!(calls.iter().all(|path| path.starts_with("/body?")));
+    assert!(store
+        .wb_requests(0.)
+        .unwrap()
+        .iter()
+        .all(|event| event.category == "body"));
+    assert_eq!(
+        store.wb_downloaded_source_ids("SYNTHETIC", 72).unwrap(),
+        expected
+    );
+    let subset = store.wb_downloaded_source_ids("SYNTHETIC", 10).unwrap();
+    assert_eq!(subset, expected[..10]);
+    let result = crate::workbench::markdown_export::export_selection_with_progress(
+        &store,
+        &root,
+        Some("SYNTHETIC"),
+        &subset,
+        &root,
+        &|_| {},
+    )
+    .unwrap();
+    assert_eq!((result.total, result.partial_images), (10, 0));
+    let dir = Path::new(&result.directory);
+    let index =
+        scraper::Html::parse_document(&std::fs::read_to_string(dir.join("index.html")).unwrap());
+    let links = scraper::Selector::parse("a[href^='articles/']").unwrap();
+    let mut extensions = Vec::new();
+    for link in index.select(&links) {
+        let href = percent_encoding::percent_decode_str(link.attr("href").unwrap())
+            .decode_utf8()
+            .unwrap();
+        let file = dir.join(href.as_ref());
+        assert!(std::fs::read_to_string(&file)
+            .unwrap()
+            .contains("真实 HTTP 测试正文"));
+        extensions.push(file.extension().unwrap().to_owned());
+    }
+    assert_eq!(extensions.iter().filter(|ext| *ext == "html").count(), 10);
+    assert_eq!(extensions.iter().filter(|ext| *ext == "md").count(), 10);
+    assert_eq!(std::fs::read_dir(dir.join("images")).unwrap().count(), 0);
+    assert!(reader_html(&store, &root, expected[0])
+        .unwrap()
+        .contains("图片已跳过"));
+    server.abort();
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[tokio::test]
 async fn partial_images_refill_without_refetching_body_and_offline_reader_is_local() {
     let (host, recover, observed, server) = server().await;
     let (store, id, task, root) = setup(&format!("{host}/body"));
@@ -90,7 +182,7 @@ async fn partial_images_refill_without_refetching_body_and_offline_reader_is_loc
         .timeout(Duration::from_secs(2))
         .build()
         .unwrap();
-    let first = collect_article(store.clone(), root.clone(), task, id, client.clone())
+    let first = collect_article(store.clone(), root.clone(), task, id, client.clone(), true)
         .await
         .unwrap();
     assert_eq!(first.state, "partial");
@@ -103,7 +195,7 @@ async fn partial_images_refill_without_refetching_body_and_offline_reader_is_loc
     assert!(html.contains("图片待补齐"));
     recover.store(true, Ordering::SeqCst);
     let next = task;
-    let second = collect_article(store.clone(), root.clone(), next, id, client)
+    let second = collect_article(store.clone(), root.clone(), next, id, client, true)
         .await
         .unwrap();
     assert_eq!(second.state, "complete");
@@ -160,7 +252,7 @@ async fn http_200_verification_without_control_pauses_without_claiming_rate_limi
     let (store, id, task, root) = setup(&format!("{host}/verify"));
     let client = reqwest::Client::builder().no_proxy().build().unwrap();
     assert!(
-        collect_article(store.clone(), root.clone(), task, id, client)
+        collect_article(store.clone(), root.clone(), task, id, client, true)
             .await
             .is_err()
     );
@@ -192,7 +284,7 @@ async fn downloaded_during_queue_wait_skips_before_http_permit_and_ledger() {
         .unwrap();
     let client = reqwest::Client::builder().no_proxy().build().unwrap();
     assert!(
-        download_article(store.clone(), root.clone(), task, id, client)
+        download_article(store.clone(), root.clone(), task, id, client, true)
             .await
             .unwrap()
             .is_none()

@@ -25,6 +25,15 @@ pub struct ExportProgress {
     pub total: usize,
 }
 struct Staging(PathBuf);
+#[cfg(windows)]
+fn hide_staging_folder(path: &Path) {
+    use windows::core::HSTRING;
+    use windows::Win32::Storage::FileSystem::{SetFileAttributesW, FILE_ATTRIBUTE_HIDDEN};
+    // 仅隐藏新建的外层暂存目录。某些共享盘不支持隐藏属性，仍可正常导出。
+    unsafe {
+        let _ = SetFileAttributesW(&HSTRING::from(path.as_os_str()), FILE_ATTRIBUTE_HIDDEN);
+    }
+}
 impl Drop for Staging {
     fn drop(&mut self) {
         let _ = std::fs::remove_dir_all(&self.0);
@@ -151,6 +160,16 @@ pub fn export_articles_with_progress(
     destination: &Path,
     on_progress: &dyn Fn(ExportProgress),
 ) -> Result<MarkdownExport> {
+    export_selection_with_progress(store, root, None, ids, destination, on_progress)
+}
+pub fn export_selection_with_progress(
+    store: &Store,
+    root: &Path,
+    biz: Option<&str>,
+    ids: &[i64],
+    destination: &Path,
+    on_progress: &dyn Fn(ExportProgress),
+) -> Result<MarkdownExport> {
     validate_selection(store, None, ids)?;
     let ids: std::collections::BTreeSet<i64> = ids.iter().copied().collect();
     ensure!(
@@ -161,9 +180,13 @@ pub fn export_articles_with_progress(
     for id in ids {
         let (article, _) = store.get_article_md(id)?.context("文章已删除或不存在")?;
         ensure!(article.is_deleted == 0, "文章已删除或不存在");
+        ensure!(
+            biz.is_none_or(|b| b == article.biz),
+            "文章与所选公众号不一致"
+        );
         articles.push(article);
     }
-    export_rows(store, root, articles, None, destination, on_progress)
+    export_rows(store, root, articles, biz, destination, on_progress)
 }
 fn export_rows(
     store: &Store,
@@ -209,7 +232,7 @@ fn export_rows(
             } else {
                 format!("{stem}_{n}")
             });
-            let stage = destination.join(format!(".{stem}-{n}.tmp"));
+            let stage = destination.join(format!(".MPider-正在导出-{stem}-{n}.tmp"));
             if published.exists() {
                 return None;
             }
@@ -220,7 +243,11 @@ fn export_rows(
             }
         })
         .context("无法分配导出目录")??;
-    let cleanup = Staging(stage.clone());
+    let cleanup = Staging(stage);
+    #[cfg(windows)]
+    hide_staging_folder(&cleanup.0);
+    // 仅发布内层目录，正式结果在 Windows 资源管理器中始终可见。
+    let stage = cleanup.0.join("output");
     let full_path = published.display().to_string();
     // Windows 的长路径前缀用于磁盘操作；界面与资源管理器使用普通路径。
     let directory = if let Some(path) = full_path.strip_prefix(r"\\?\UNC\") {
@@ -259,7 +286,9 @@ fn export_rows(
         let mut raw = store.wb_cached_html(row.id)?;
         let mut partial = false;
         let record = store.wb_archive(row.id)?;
-        if let Some(record) = record.filter(|r| ["complete", "partial"].contains(&r.state.as_str()))
+        let include_images = record.as_ref().is_none_or(|r| r.state != "text_only");
+        if let Some(record) =
+            record.filter(|r| ["complete", "partial", "text_only"].contains(&r.state.as_str()))
         {
             let dir = root.join("archive/articles").join(row.id.to_string());
             // A database copied from another computer may have no matching archive on this machine.
@@ -290,7 +319,7 @@ fn export_rows(
                 }
                 partial = !record.missing_images.is_empty() || record.state == "partial";
                 let source_images = dir.join("images");
-                if source_images.exists() {
+                if include_images && source_images.exists() {
                     local_dir(&source_images)?;
                     for entry in std::fs::read_dir(source_images)? {
                         let entry = entry?;
@@ -357,7 +386,7 @@ fn export_rows(
         }
         let original_body = raw
             .as_deref()
-            .and_then(|html| export_html::body(html, &images));
+            .and_then(|html| export_html::body(html, &images, include_images));
         let mut body = original_body.clone().unwrap_or_else(|| {
             let mut html = String::new();
             pulldown_cmark::html::push_html(
@@ -369,7 +398,7 @@ fn export_rows(
                         | pulldown_cmark::Options::ENABLE_TASKLISTS,
                 ),
             );
-            export_html::clean(&html, &images)
+            export_html::clean(&html, &images, include_images)
         });
         partial |= body.contains("［图片未保存在本地］");
         if partial {
@@ -555,7 +584,16 @@ mod tests {
                     .map(|e| e.unwrap().path())
                     .find(|p| p.to_string_lossy().ends_with(".tmp"))
                     .unwrap();
-                let html = std::fs::read_dir(stage.join("articles"))
+                #[cfg(windows)]
+                {
+                    use std::os::windows::fs::MetadataExt;
+                    use windows::Win32::Storage::FileSystem::FILE_ATTRIBUTE_HIDDEN;
+                    assert_ne!(
+                        stage.metadata().unwrap().file_attributes() & FILE_ATTRIBUTE_HIDDEN.0,
+                        0
+                    );
+                }
+                let html = std::fs::read_dir(stage.join("output/articles"))
                     .unwrap()
                     .filter(|e| {
                         e.as_ref()
@@ -582,6 +620,15 @@ mod tests {
         assert_eq!(result.total, 76);
         assert_eq!(result.partial_images, 0);
         let dir = Path::new(&result.directory);
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::MetadataExt;
+            use windows::Win32::Storage::FileSystem::FILE_ATTRIBUTE_HIDDEN;
+            assert_eq!(
+                dir.metadata().unwrap().file_attributes() & FILE_ATTRIBUTE_HIDDEN.0,
+                0
+            );
+        }
         let mut entries = std::fs::read_dir(dir)
             .unwrap()
             .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
@@ -642,7 +689,7 @@ mod tests {
             ("https://example.test/bg".into(), "../images/bg.png".into()),
         ]);
         let raw = r#"<script>PRIVATE_SCRIPT</script><div id="js_content"><section style="text-align:center; color:red; visibility:hidden; opacity:0; background-image:url('https://example.test/bg'); padding:12px"><strong>粗体</strong><span style="font-size:24px">大字</span><img data-src="images/abc.png" srcset="https://track.test/pixel" onerror="PRIVATE_HANDLER" style="width:45%"><img src="../../private/secret.png"><iframe src="https://track.test/frame"></iframe><a href="https://mp.weixin.qq.com/s?mid=1&amp;KEY=PRIVATE_KEY&amp;pass_ticket=PRIVATE_TICKET#PRIVATE_FRAGMENT">链接</a><a href="javascript:PRIVATE_JS">无效</a><form><input autofocus onfocus="PRIVATE_FOCUS"></form><div style="background:url('https://track.test/pixel'); position:fixed">正文</div></section></div>"#;
-        let body = export_html::body(raw, &images).unwrap();
+        let body = export_html::body(raw, &images, true).unwrap();
         let html = export_html::article("<测试 & 标题>", "虚构号", "", "", "文章", &body);
         assert!(html.contains("<title>&lt;测试 &amp; 标题&gt;</title>"));
         assert!(html.contains("text-align: center"));
@@ -683,6 +730,7 @@ mod tests {
         let audio = export_html::clean(
             r#"<mp-common-mpaudio name="夜读&amp;nbsp;|&amp;nbsp;&amp;lt;标题&amp;gt;"></mp-common-mpaudio>"#,
             &images,
+            true,
         );
         assert_eq!(
             Html::parse_fragment(&audio)

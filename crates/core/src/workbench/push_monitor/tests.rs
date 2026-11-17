@@ -508,6 +508,146 @@ async fn fixture_with_location(
 }
 
 #[tokio::test]
+async fn push_page_cache_saves_one_body_request_only_for_a_fresh_complete_page() {
+    use crate::workbench::archive;
+    use std::sync::atomic::AtomicUsize;
+
+    for case in ["fresh", "expired", "metadata_only"] {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let endpoint = format!("http://{}/s", listener.local_addr().unwrap());
+        let calls = Arc::new(AtomicUsize::new(0));
+        let observed = calls.clone();
+        let server = tokio::spawn(async move {
+            loop {
+                let (mut socket, _) = listener.accept().await.unwrap();
+                let mut request = [0; 4096];
+                assert!(socket.read(&mut request).await.unwrap() > 0);
+                let first = observed.fetch_add(1, Ordering::SeqCst) == 0;
+                let mut body = html("FAKE_A");
+                if first && case == "metadata_only" {
+                    body = body.replace("<p>虚构正文</p>", "");
+                } else if !first {
+                    body = body.replace("虚构正文", "重新获取的正文");
+                }
+                let response = format!(
+                    "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                    body.len()
+                );
+                socket.write_all(response.as_bytes()).await.unwrap();
+            }
+        });
+        let root = std::env::temp_dir().join(format!(
+            "mpider-push-cache-{}-{}-{case}",
+            std::process::id(),
+            (now() * 1e6) as u64
+        ));
+        std::fs::create_dir_all(&root).unwrap();
+        let db = root.join("test.db");
+        let store = Store::open(&db).unwrap();
+        let run = start_both(&store, Config::default());
+        store
+            .push_scanned(
+                run,
+                Scan {
+                    links: vec![link("FAKE_A")],
+                    ..Default::default()
+                },
+                now(),
+            )
+            .unwrap();
+        let candidate = store.push_next(run, now()).unwrap().unwrap();
+        process_at(&store, &client().unwrap(), run, candidate, &endpoint)
+            .await
+            .unwrap();
+        let articles = store.list_articles(None, 10, 0, false).unwrap();
+        assert_eq!(
+            articles.len(),
+            1,
+            "{case}: {:?}",
+            store.push_events(None, 1).unwrap().items
+        );
+        let article = articles[0].id;
+        assert!(!store.wb_body_available(article).unwrap());
+        assert!(store.wb_cached_html(article).unwrap().is_none());
+        assert_eq!(
+            store.wb_download_html(article).unwrap().is_some(),
+            case != "metadata_only"
+        );
+        drop(store);
+
+        // 正式入库保留规范文章地址；测试将后续下载指向同一个本地服务。
+        let conn = rusqlite::Connection::open(&db).unwrap();
+        conn.execute(
+            "UPDATE articles SET content_url=? WHERE id=?",
+            rusqlite::params![endpoint, article],
+        )
+        .unwrap();
+        if case == "expired" {
+            conn.execute(
+                "UPDATE push_page_cache SET expires_at=0 WHERE article_id=?",
+                [article],
+            )
+            .unwrap();
+        }
+        let store = Arc::new(Store::open(&db).unwrap());
+        let task = store
+            .wb_download_enqueue(vec![article])
+            .unwrap()
+            .task_id
+            .unwrap();
+        let worker = tokio::spawn(archive::run(store.clone(), root.clone()));
+        tokio::time::timeout(Duration::from_secs(8), async {
+            while store.wb_task(task).unwrap().state != "done" {
+                tokio::time::sleep(Duration::from_millis(20)).await;
+            }
+        })
+        .await
+        .unwrap();
+        worker.abort();
+        let _ = worker.await;
+        assert!(store.wb_body_available(article).unwrap());
+        assert_eq!(
+            store.wb_archive(article).unwrap().unwrap().state,
+            "complete"
+        );
+        assert!(archive::reader_html(&store, &root, article)
+            .unwrap()
+            .contains(if case == "fresh" {
+                "虚构正文"
+            } else {
+                "重新获取的正文"
+            }));
+        let events = store.wb_requests(0.).unwrap();
+        let body_requests = usize::from(case != "fresh");
+        assert_eq!(
+            events
+                .iter()
+                .filter(|e| e.category == CATEGORY && e.outcome == "ok")
+                .count(),
+            1
+        );
+        assert_eq!(
+            events
+                .iter()
+                .filter(|e| e.category == "body" && e.outcome == "ok")
+                .count(),
+            body_requests
+        );
+        assert_eq!(calls.load(Ordering::SeqCst), 1 + body_requests);
+        assert_eq!(
+            conn.query_row("SELECT COUNT(*) FROM push_page_cache", [], |r| r
+                .get::<_, usize>(0))
+                .unwrap(),
+            0
+        );
+        server.abort();
+        drop(conn);
+        drop(store);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+}
+
+#[tokio::test]
 async fn article_redirect_is_durable_prioritized_and_each_hop_is_counted() {
     let (store, id, candidate_id) = setup(Config::default());
     let (endpoint, server) = fixture_with_location(

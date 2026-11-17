@@ -152,22 +152,25 @@ pub fn workbench_source_counts(
 pub fn workbench_archive_source(
     state: State<'_, AppState>,
     biz: String,
+    limit: Option<u32>,
+    include_images: Option<bool>,
 ) -> Result<DownloadReceipt, String> {
     root(&state)?;
     state
         .store
-        .wb_download_source(&biz)
+        .wb_download_source_with_options(&biz, limit, include_images.unwrap_or(true))
         .map_err(|e| e.to_string())
 }
 #[tauri::command]
 pub fn workbench_download_articles(
     state: State<'_, AppState>,
     article_ids: Vec<i64>,
+    include_images: Option<bool>,
 ) -> Result<DownloadReceipt, String> {
     root(&state)?;
     state
         .store
-        .wb_download_enqueue(article_ids)
+        .wb_download_selected(article_ids, include_images.unwrap_or(true))
         .map_err(|e| e.to_string())
 }
 #[tauri::command]
@@ -197,6 +200,7 @@ pub async fn workbench_export_source(
     window: tauri::WebviewWindow,
     state: State<'_, AppState>,
     biz: String,
+    limit: Option<u32>,
     on_progress: tauri::ipc::Channel<core::markdown_export::ExportProgress>,
 ) -> Result<Option<core::markdown_export::MarkdownExport>, String> {
     pick_markdown_export(
@@ -204,6 +208,7 @@ pub async fn workbench_export_source(
         state.store.clone(),
         root(&state)?,
         Some(biz),
+        limit,
         Vec::new(),
         on_progress,
     )
@@ -221,6 +226,7 @@ pub async fn workbench_export_articles(
         state.store.clone(),
         root(&state)?,
         None,
+        None,
         article_ids,
         on_progress,
     )
@@ -231,12 +237,24 @@ async fn pick_markdown_export(
     store: Arc<Store>,
     root: PathBuf,
     biz: Option<String>,
+    limit: Option<u32>,
     ids: Vec<i64>,
     on_progress: tauri::ipc::Channel<core::markdown_export::ExportProgress>,
 ) -> Result<Option<core::markdown_export::MarkdownExport>, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        core::markdown_export::validate_selection(&store, biz.as_deref(), &ids)
-            .map_err(|e| e.to_string())?;
+        let whole_source = biz.is_some() && limit.is_none();
+        let ids = match (biz.as_deref(), limit) {
+            (Some(biz), Some(limit)) => store
+                .wb_downloaded_source_ids(biz, limit)
+                .map_err(|e| e.to_string())?,
+            _ => ids,
+        };
+        core::markdown_export::validate_selection(
+            &store,
+            biz.as_deref().filter(|_| whole_source),
+            &ids,
+        )
+        .map_err(|e| e.to_string())?;
         let selected = rfd::FileDialog::new()
             .set_parent(&window)
             .set_title("选择文章导出文件夹（Markdown 和 HTML）")
@@ -249,11 +267,16 @@ async fn pick_markdown_export(
             let _ = on_progress.send(progress);
         };
         match biz {
-            Some(biz) => core::markdown_export::export_source_with_progress(
+            Some(biz) if whole_source => core::markdown_export::export_source_with_progress(
                 &store, &root, &biz, &path, &report,
             ),
-            None => core::markdown_export::export_articles_with_progress(
-                &store, &root, &ids, &path, &report,
+            source => core::markdown_export::export_selection_with_progress(
+                &store,
+                &root,
+                source.as_deref(),
+                &ids,
+                &path,
+                &report,
             ),
         }
         .map(Some)

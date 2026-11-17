@@ -1,7 +1,7 @@
 /** 操作列回归：会话恢复、任务状态和正文完整性决定唯一的主操作。 */
 import test from "node:test";
 import assert from "node:assert/strict";
-import { canCancelTask, sourceBodyAction, taskPrimaryAction } from "../frontend/src/lib/action-visibility.ts";
+import { canCancelTask, sourceBodyAvailability, taskPrimaryAction } from "../frontend/src/lib/action-visibility.ts";
 import type { Source, Task } from "../frontend/src/lib/workbench.ts";
 
 const source = { session_id: "new-session" } as Source;
@@ -28,10 +28,12 @@ test("下载结束仍缺正文或图片时提供重试；完整下载与取消�
   assert.equal(taskPrimaryAction({ ...partial, state: "cancelled" }), null);
   assert.equal(taskPrimaryAction({ ...partial, progress: task().progress }), null);
 });
-test("整号仅在全部非空正文齐备时允许导出；缺正文提供下载，未知状态不猜测", () => {
-  assert.equal(sourceBodyAction(10, 0), "download");
-  assert.equal(sourceBodyAction(10, 9), "download");
-  assert.equal(sourceBodyAction(10, 10), "export");
-  for (const count of [undefined, -1, 11, NaN, 1.5]) assert.equal(sourceBodyAction(10, count), null);
-  assert.equal(sourceBodyAction(0, 0), null);
+test("部分正文已下载时可同时下载和导出；无正文时不能导出", () => {
+  assert.deepEqual(sourceBodyAvailability(72, 30), { known: true, canDownload: true, canExport: true });
+  assert.deepEqual(sourceBodyAvailability(72, 0), { known: true, canDownload: true, canExport: false });
+  assert.deepEqual(sourceBodyAvailability(72, 72), { known: true, canDownload: false, canExport: true });
+  assert.deepEqual(sourceBodyAvailability(0, 0), { known: true, canDownload: false, canExport: false });
+  for (const count of [undefined, -1, 73, NaN, 1.5]) {
+    assert.deepEqual(sourceBodyAvailability(72, count), { known: false, canDownload: false, canExport: false });
+  }
 });

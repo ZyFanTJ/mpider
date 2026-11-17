@@ -3,14 +3,45 @@ use super::markdown_export::{escaped, source_url};
 use scraper::{Html, Selector};
 use sha2::{Digest, Sha256};
 use std::{
+    borrow::Cow,
     collections::{HashMap, HashSet},
     sync::LazyLock,
 };
 
-static SCRIPTS: LazyLock<regex::Regex> =
-    LazyLock::new(|| regex::Regex::new(r"(?is)<script\b[^>]*>.*?</script\s*>").unwrap());
+// 搜索开、闭标签，避免在数 MB 的脚本内容上逐字符匹配通配符。
+fn without_scripts(raw: &str) -> Cow<'_, str> {
+    static OPEN: LazyLock<regex::Regex> =
+        LazyLock::new(|| regex::Regex::new(r"(?i)<script\b[^>]*>").unwrap());
+    static CLOSE: LazyLock<regex::Regex> =
+        LazyLock::new(|| regex::Regex::new(r"(?i)</script\s*>").unwrap());
+    let mut kept = String::new();
+    let mut cursor = 0;
+    while let Some(open) = OPEN.find_at(raw, cursor) {
+        let Some(close) = CLOSE.find_at(raw, open.end()) else {
+            break;
+        };
+        kept.push_str(&raw[cursor..open.start()]);
+        cursor = close.end();
+    }
+    if cursor == 0 {
+        return Cow::Borrowed(raw);
+    }
+    kept.push_str(&raw[cursor..]);
+    Cow::Owned(kept)
+}
 static CSS_URL: LazyLock<regex::Regex> =
     LazyLock::new(|| regex::Regex::new(r#"(?i)url\(\s*["']?([^"')]+)["']?\s*\)"#).unwrap());
+
+#[cfg(test)]
+#[test]
+fn script_removal_preserves_surrounding_markup() {
+    let raw = "甲<SCRIPT defer>\n1 < 2\n</sCrIpT >乙<script>2</script>丙<scripted>3</scripted><script>未闭合";
+    assert_eq!(
+        without_scripts(raw),
+        "甲乙丙<scripted>3</scripted><script>未闭合"
+    );
+    assert_eq!(without_scripts("无脚本的正文"), "无脚本的正文");
+}
 
 pub(super) fn image_key(value: &str) -> String {
     url::Url::parse(value)
@@ -117,8 +148,12 @@ fn clean_style(style: &str, images: &HashMap<String, String>) -> String {
 }
 
 /// 只提取正文；原页面脚本、头部、追踪元素和会话参数不会进入交付物。
-pub(super) fn body(raw: &str, images: &HashMap<String, String>) -> Option<String> {
-    let stripped = SCRIPTS.replace_all(raw, "");
+pub(super) fn body(
+    raw: &str,
+    images: &HashMap<String, String>,
+    include_images: bool,
+) -> Option<String> {
+    let stripped = without_scripts(raw);
     let doc = Html::parse_document(&stripped);
     let fragment = [
         "#js_content",
@@ -140,7 +175,7 @@ pub(super) fn body(raw: &str, images: &HashMap<String, String>) -> Option<String
             })
             .map(|e| e.inner_html())
     })?;
-    Some(clean(&fragment, images))
+    Some(clean(&fragment, images, include_images))
 }
 
 fn decoded_text(value: &str) -> String {
@@ -149,7 +184,11 @@ fn decoded_text(value: &str) -> String {
     Html::parse_fragment(&text).root_element().text().collect()
 }
 
-pub(super) fn clean(fragment: &str, images: &HashMap<String, String>) -> String {
+pub(super) fn clean(
+    fragment: &str,
+    images: &HashMap<String, String>,
+    include_images: bool,
+) -> String {
     let doc = Html::parse_fragment(fragment);
     // Work on canonical serialized HTML so replacement also handles mixed-case and unquoted attributes.
     let mut output = doc.root_element().inner_html();
@@ -157,7 +196,9 @@ pub(super) fn clean(fragment: &str, images: &HashMap<String, String>) -> String 
     // Reverse order ensures nested replacements cannot leave active children behind.
     for el in doc.select(&media).collect::<Vec<_>>().into_iter().rev() {
         let name = el.value().name();
-        let replacement = if name == "img" {
+        let replacement = if name == "img" && !include_images {
+            "<span>［图片已跳过］</span>".into()
+        } else if name == "img" {
             let raw = el
                 .value()
                 .attr("data-src")
