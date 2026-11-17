@@ -16,8 +16,7 @@ export function Faq({ onNav }: { onNav: (view: View) => void }) {
   const allOpen = expanded.size === questions.length;
   return <div className="mx-auto max-w-4xl space-y-5">
     <header className="space-y-2">
-      <h1 className="text-xl font-semibold">常见问题（FAQ）</h1>
-      <p className="text-sm text-muted-foreground">当前 Windows 工作台的采集限制、运行环境与数据隐私。区分已验证范围和未确认结论，不承诺免封控。</p>
+      <h1 className="text-xl font-semibold">常见问题</h1>
       <div className="flex flex-wrap items-center gap-2 pt-1">
         <Button variant="outline" size="sm" onClick={() => setExpanded(new Set(allOpen ? [] : questions.map(question => question.title)))}>{allOpen ? "全部收起" : "全部展开"}</Button>
         <Button variant="ghost" size="sm" onClick={() => onNav("settings")}>系统设置</Button>

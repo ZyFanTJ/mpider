@@ -24,6 +24,7 @@ import {
 import { toast } from "sonner";
 import { useApp } from "@/store";
 import { msg } from "@/lib/utils";
+import { InfoTip } from "@/components/InfoTip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -462,11 +463,11 @@ function Field({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <div className="flex items-center gap-1">
+        <Label className="text-xs text-muted-foreground">{label}</Label>
+        {hint && <InfoTip label={`${label}说明`}>{hint}</InfoTip>}
+      </div>
       {children}
-      {hint && (
-        <small className="text-[11px] text-muted-foreground">{hint}</small>
-      )}
     </div>
   );
 }
@@ -494,9 +495,9 @@ function SwitchRow({
 }) {
   return (
     <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3 md:col-span-2">
-      <div className="pr-4">
-        <div className="text-xs font-medium">{title}</div>
-        <div className="mt-0.5 text-xs text-muted-foreground">{hint}</div>
+      <div className="flex items-center gap-1 pr-4">
+        <span className="text-xs font-medium">{title}</span>
+        <InfoTip label={`${title}说明`}>{hint}</InfoTip>
       </div>
       <Switch checked={checked} onCheckedChange={onCheckedChange} />
     </div>
@@ -1588,10 +1589,6 @@ export function Settings() {
       <div className="mb-3 flex items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">系统设置</h1>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            证书安装与抓取运行参数，按模块折叠；改完在底部「保存配置」；底部还能导出
-            / 复制 / 导入配置
-          </p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <Button

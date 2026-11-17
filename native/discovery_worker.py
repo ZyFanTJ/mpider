@@ -229,6 +229,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     try:
         run(args)
+    except ModuleNotFoundError:
+        emit('fault', reason='missing_python_module')
     except Exception:
         emit('fault', reason='识别观察器已停止，请检查微信登录状态、适配版本与运行依赖后重新开始')
     finally:

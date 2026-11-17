@@ -9,6 +9,7 @@ import shutil
 import struct
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.request
 import zipfile
@@ -74,14 +75,88 @@ def verify_pe(executable):
         raise ValueError("程序不是 Windows x64 PE 文件")
 
 
+def assemble_runtime(runtime, lock, cache):
+    runtime.mkdir(parents=True)
+    extract(download(lock["python"], cache), runtime)
+    # ._pth 保持嵌入式隔离，依赖只从便携目录加载。
+    (runtime / "python312._pth").write_text("python312.zip\n.\nsession-deps\n", encoding="utf-8")
+    dependencies = runtime / "session-deps"
+    dependencies.mkdir()
+    for item in lock["packages"]:
+        extract(download(item, cache), dependencies)
+
+
+def install_desktop_runtime(destination, source, lock, cache):
+    destination = destination.resolve()
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if destination.name != "runtime":
+        raise ValueError("源码版运行环境目标目录必须名为 runtime")
+    with tempfile.TemporaryDirectory(prefix=".mpider-runtime-", dir=destination.parent) as temporary:
+        staging = Path(temporary) / "runtime"
+        if source and (source / "release-manifest.json").is_file():
+            manifest = json.loads((source / "release-manifest.json").read_text(encoding="utf-8"))
+            expected = {item["name"]: item["version"] for item in lock["packages"]}
+            if manifest["python"] != lock["python"]["version"] or manifest["packages"] != expected:
+                raise ValueError("现有便携包的运行依赖与版本锁不符")
+            files = {name: checksum for name, checksum in manifest["files"].items()
+                     if name.startswith("runtime/")}
+            if "runtime/python.exe" not in files or "runtime/python312._pth" not in files:
+                raise ValueError("便携包清单缺少 Python 运行环境")
+            for name, checksum in files.items():
+                original = (source / name).resolve()
+                copied = (Path(temporary) / name).resolve()
+                if not original.is_relative_to((source / "runtime").resolve()) or not copied.is_relative_to(staging):
+                    raise ValueError("运行环境清单路径越界")
+                if digest(original) != checksum:
+                    raise ValueError(f"现有运行环境文件摘要不匹配：{name}")
+                copied.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(original, copied)
+        else:
+            assemble_runtime(staging, lock, cache)
+        for item in lock["licenses"]:
+            license_source = ROOT / item["path"]
+            if digest(license_source) != item["sha256"]:
+                raise ValueError(f"许可全文摘要不匹配：{item['filename']}")
+            shutil.copy2(license_source, staging / item["filename"])
+        check = """
+import json, sys, frida, cryptography, cffi, pycparser
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+key = AESGCM.generate_key(bit_length=128)
+aes = AESGCM(key)
+nonce, message = b'0' * 12, b'mpider-runtime-check'
+assert aes.decrypt(nonce, aes.encrypt(nonce, message, None), None) == message
+print(json.dumps({'python': '.'.join(map(str, sys.version_info[:3])),
+ 'frida': frida.__version__, 'cryptography': cryptography.__version__,
+ 'cffi': cffi.__version__, 'pycparser': pycparser.__version__}))
+"""
+        result = subprocess.run([str(staging / "python.exe"), "-I", "-B", "-c", check],
+                                check=True, capture_output=True, text=True, timeout=60)
+        versions = json.loads(result.stdout)
+        if versions != {"python": lock["python"]["version"], **{item["name"]: item["version"] for item in lock["packages"]}}:
+            raise ValueError("便携 Python 自检版本与版本锁不符")
+        previous = Path(temporary) / "previous"
+        if destination.exists():
+            destination.rename(previous)
+        try:
+            staging.rename(destination)
+        except OSError:
+            if previous.exists():
+                previous.rename(destination)
+            raise
+    print(f"源码版便携运行环境已就绪：{destination}")
+    print(json.dumps(versions))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--exe", type=Path)
     parser.add_argument("--prefetch", action="store_true", help="只下载并校验锁定的运行环境，在长构建前暴露网络问题")
     parser.add_argument("--output", type=Path, default=ROOT / "dist-windows")
     parser.add_argument("--revision", default="source-archive")
+    parser.add_argument("--runtime-only", type=Path, help="只准备源码版 EXE 旁的 runtime 目录")
+    parser.add_argument("--runtime-source", type=Path, help="复用已校验的现有便携发行目录")
     args = parser.parse_args()
-    if not args.prefetch:
+    if not args.prefetch and args.runtime_only is None:
         if args.exe is None:
             parser.error("组装便携包需要 --exe")
         verify_pe(args.exe)
@@ -96,6 +171,9 @@ def main():
     output.mkdir(parents=True, exist_ok=True)
     cache = output / ".downloads"
     cache.mkdir(exist_ok=True)
+    if args.runtime_only is not None:
+        install_desktop_runtime(args.runtime_only, args.runtime_source, lock, cache)
+        return
     if args.prefetch:
         for item in (lock["python"], *lock["packages"]):
             download(item, cache)
@@ -106,14 +184,8 @@ def main():
     if stage.exists():
         shutil.rmtree(stage)
     runtime = stage / "runtime"
-    runtime.mkdir(parents=True)
-    extract(download(lock["python"], cache), runtime)
-    # ._pth 维持嵌入式隔离；加入发行包内的依赖，忽略全局 Python/site-packages。
-    (runtime / "python312._pth").write_text("python312.zip\n.\nsession-deps\n", encoding="utf-8")
+    assemble_runtime(runtime, lock, cache)
     dependencies = runtime / "session-deps"
-    dependencies.mkdir()
-    for item in lock["packages"]:
-        extract(download(item, cache), dependencies)
     licenses = stage / "licenses"
     licenses.mkdir()
     for item in lock["licenses"]:

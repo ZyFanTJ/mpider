@@ -9,7 +9,23 @@ export function needsSessionRecovery(task: Task, source?: Source) {
 }
 export function homeSyncState(discovery?: Discovery | null) {
   const state = discovery?.state;
-  return { text: state === "running" ? "已开启" : state === "starting" ? "连接中" : state === "stopping" ? "正在关闭" : state === "failed" ? "连接异常" : "已关闭", active: state === "starting" || state === "running" || state === "stopping", ready: state === "running" };
+  if (state === "failed") {
+    const phases = discovery?.phases;
+    let text = "识别失败";
+    let reason = "本次主页识别已结束，具体原因未记录。";
+    if (phases?.some(entry => entry.phase === "ready")) {
+      text = "运行中断";
+      reason = "识别进程已就绪，随后中断。";
+    } else if (phases?.some(entry => entry.phase === "worker_spawned")) {
+      text = "启动失败";
+      reason = "上次识别进程在就绪前已结束。";
+    }
+    if (discovery?.reason && discovery.reason !== "主页同步已中断，请检查微信登录状态后重新开启") {
+      reason = discovery.reason;
+    }
+    return { text, reason, active: false, ready: false };
+  }
+  return { text: state === "running" ? "已开启" : state === "starting" ? "连接中" : state === "stopping" ? "正在关闭" : "已关闭", reason: discovery?.reason, active: state === "starting" || state === "running" || state === "stopping", ready: state === "running" };
 }
 export function recoveryMessage(task: Task, discovery?: Discovery | null) {
   const r = task.progress.session_recovery;

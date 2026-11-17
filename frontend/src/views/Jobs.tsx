@@ -184,7 +184,7 @@ export function Jobs() {
             </CardTitle>
             <CardDescription className="flex items-center gap-1">
               <span>
-                每个巡检批次的留档。本页：正常 {summary.ok} · 超时 {summary.timeout} · 服务端错误 {summary.server_error} · 错误{" "}
+                本页：正常 {summary.ok} · 超时 {summary.timeout} · 服务端错误 {summary.server_error} · 错误{" "}
                 {summary.error}
               </span>
               <InfoTip>

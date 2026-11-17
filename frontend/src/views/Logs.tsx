@@ -292,8 +292,7 @@ export function Logs() {
       <div className="mb-3">
         <h1 className="text-xl font-semibold tracking-tight">日志</h1>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          整链各环节的步骤记录：取任务 → 开抓凭证代理 → 点种子 → 抓凭证 → 逐页取列表 → 续期 → 上报。
-          关键节点入库，保留近 {stats?.retention_days ?? 3} 天；出问题时可导出文件。
+          日志保留近 {stats?.retention_days ?? 3} 天。
         </p>
       </div>
 

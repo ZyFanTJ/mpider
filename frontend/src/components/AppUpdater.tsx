@@ -88,19 +88,19 @@ export function UpdatePanel() {
   const phase = status?.phase;
   const downloaded = phase === "ready";
   const description = phase === "checking" ? "正在检查 GitHub 上的正式版本…"
-    : phase === "downloading" ? "正在预下载安装包，完成后可继续使用，稍后启动更新。"
-    : downloaded ? "安装包已下载并通过签名校验。下次打开应用仍可安装，无需重新下载。"
+    : phase === "downloading" ? "正在下载安装包…"
+    : downloaded ? "安装包已通过签名校验，可随时安装。"
     : phase === "installing" ? "正在安装更新，应用即将重启…"
-    : phase === "available" ? "发现新版本，可先下载安装包，方便时再更新。"
+    : phase === "available" ? "有新版本可供下载。"
     : phase === "up_to_date" ? "当前已是最新正式版本。"
     : !isTauri() ? "请在桌面应用中检查与安装更新。"
     : status && !status.supported ? "目前仅提供 Windows x64 的版本更新。"
     : status && !status.configured ? "此构建尚未启用应用内更新，可前往 GitHub Releases 获取正式安装包。"
-    : "从 GitHub Releases 获取正式版本，安装前会校验安装包签名。";
+    : null;
   return <section className="space-y-4 rounded-xl border bg-card p-5" aria-labelledby="app-update-title">
     <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 id="app-update-title" className="text-base font-semibold">版本更新</h2><p className="mt-1 text-xs text-muted-foreground">当前版本 {status ? `v${status.current_version}` : "—"}{status?.version && ` · 新版本 v${status.version}`}</p></div>
       <Button variant="outline" disabled={!status?.supported || !status?.configured || busy || downloaded} onClick={() => void run("check")}><RefreshCw className={phase === "checking" ? "animate-spin" : ""} />检查更新</Button></div>
-    <p role="status" className="text-sm text-muted-foreground">{description}</p>
+    {description && <p role="status" className="text-sm text-muted-foreground">{description}</p>}
     {phase === "downloading" && <div className="space-y-2"><Progress aria-label="安装包下载进度" value={status?.total_bytes ? Math.min(100, status.downloaded_bytes / status.total_bytes * 100) : undefined} /><p className="text-xs text-muted-foreground">{mb(status?.downloaded_bytes || 0)}{status?.total_bytes ? ` / ${mb(status.total_bytes)}` : " · 正在下载"}</p></div>}
     {(error || status?.error) && <p role="alert" className="break-words text-sm text-destructive">{error || status?.error}</p>}
     {status?.notes && <details className="text-sm"><summary className="cursor-pointer">更新说明 · v{status.version}</summary><p className="mt-3 max-h-64 overflow-y-auto whitespace-pre-wrap break-words text-xs leading-relaxed text-muted-foreground">{status.notes}</p></details>}

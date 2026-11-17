@@ -235,7 +235,7 @@ async fn download_image(
 }
 
 /// 从正文节点提取图片，将每个 img 改写成可信本地资源或缺图提示，再做 HTML 清洗。
-fn offline_body(html: &str, images: &HashMap<String, String>) -> String {
+fn offline_body(html: &str, images: &HashMap<String, String>, include_images: bool) -> String {
     let doc = Html::parse_document(html);
     let selector = Selector::parse("#js_content").unwrap();
     let fragment = doc
@@ -257,6 +257,7 @@ fn offline_body(html: &str, images: &HashMap<String, String>) -> String {
                 escaped(local),
                 escaped(img.value().attr("alt").unwrap_or_default())
             ),
+            None if !include_images => "<p>［图片已跳过］</p>".into(),
             None => "<p>［图片待补齐］</p>".into(),
         };
         output = output.replace(&img.html(), &replacement);
@@ -276,6 +277,7 @@ async fn collect_article(
     task: i64,
     id: i64,
     client: reqwest::Client,
+    include_images: bool,
 ) -> Result<ArchiveRecord> {
     let (row, _) = store.get_article_md(id)?.context("文章不存在")?;
     ensure!(row.is_deleted == 0, "文章已删除");
@@ -285,7 +287,7 @@ async fn collect_article(
         std::fs::create_dir_all(&dir)?;
         Ok(())
     })?;
-    let cached = store.wb_cached_html(id)?;
+    let cached = store.wb_download_html(id)?;
     let mut request_id = None;
     let html = if let Some(html) = cached.filter(|s| !s.is_empty()) {
         html
@@ -363,9 +365,11 @@ async fn collect_article(
             bail!("未解析到正文");
         }
     };
-    store.wb_save_article_body(id, &html, &markdown, parsed.title.as_deref())?;
+    if include_images {
+        store.wb_save_article_body(id, &html, &markdown, parsed.title.as_deref())?;
+    }
     // DOM 借用在 await 前释放，后台 worker 保持 Send。
-    let mut urls: Vec<String> = {
+    let mut urls: Vec<String> = if include_images {
         let doc = Html::parse_document(&html);
         let selector = Selector::parse("#js_content img").unwrap();
         doc.select(&selector)
@@ -377,9 +381,13 @@ async fn collect_article(
             .filter(|s| s.starts_with("http://") || s.starts_with("https://"))
             .map(str::to_string)
             .collect()
+    } else {
+        Vec::new()
     };
-    if let Some(cover) = parsed.cover.clone().or(store.wb_article_cover(id)?) {
-        urls.push(cover)
+    if include_images {
+        if let Some(cover) = parsed.cover.clone().or(store.wb_article_cover(id)?) {
+            urls.push(cover);
+        }
     }
     let mut seen = HashSet::new();
     urls.retain(|u| seen.insert(image_key(u)));
@@ -416,11 +424,12 @@ async fn collect_article(
         .replace_all(&local_md, |cap: &regex::Captures<'_>| {
             match images.get(&image_key(&cap[2])) {
                 Some(path) => format!("![{}]({})", &cap[1], path),
+                None if !include_images => "［图片已跳过］".into(),
                 None => "［图片待补齐］".into(),
             }
         })
         .into_owned();
-    let body = offline_body(&html, &images);
+    let body = offline_body(&html, &images, include_images);
     // 特殊文章没有标准正文节点时仍提供可离线阅读的纯文本 Markdown。
     let body = if body.trim().is_empty() {
         format!("<pre>{}</pre>", escaped(&local_md))
@@ -433,7 +442,9 @@ async fn collect_article(
     store.wb_with_live_article(id, || {
         atomic_write(&dir.join("article.md"), local_md.as_bytes())
     })?;
-    let state = if missing.is_empty() {
+    let state = if !include_images {
+        "text_only"
+    } else if missing.is_empty() {
         "complete"
     } else {
         "partial"
@@ -456,6 +467,9 @@ async fn collect_article(
     })?;
     store.wb_with_live_article(id, || write_manifest(&dir))?;
     store.wb_save_archive(&record)?;
+    if !include_images {
+        store.wb_save_article_body(id, &html, &local_md, parsed.title.as_deref())?;
+    }
     Ok(record)
 }
 
@@ -534,11 +548,12 @@ async fn download_article(
     task: i64,
     id: i64,
     client: reqwest::Client,
+    include_images: bool,
 ) -> Result<Option<ArchiveRecord>> {
     if store.wb_body_available(id)? {
         return Ok(None);
     }
-    collect_article(store, root, task, id, client)
+    collect_article(store, root, task, id, client, include_images)
         .await
         .map(Some)
 }
@@ -568,6 +583,7 @@ pub async fn run(store: Arc<Store>, root: PathBuf) {
                     .into_iter()
                     .filter(|id| !task.progress.finished_ids.contains(id))
                     .collect();
+                let include_images = task.target["include_images"].as_bool().unwrap_or(true);
                 let mut workers = tokio::task::JoinSet::new();
                 loop {
                     let max = store.wb_policy()?.body_workers;
@@ -578,7 +594,8 @@ pub async fn run(store: Arc<Store>, root: PathBuf) {
                         let c = client.clone();
                         let task_id = task.id;
                         workers.spawn(async move {
-                            let result = download_article(s, r, task_id, id, c).await;
+                            let result =
+                                download_article(s, r, task_id, id, c, include_images).await;
                             (id, result)
                         });
                     }

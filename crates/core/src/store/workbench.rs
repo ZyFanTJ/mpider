@@ -887,27 +887,76 @@ impl Store {
     }
     /// 所有下载入口共用同一事务：固定集合、正文去重、队列去重同时完成。
     pub fn wb_download_enqueue(&self, ids: Vec<i64>) -> Result<DownloadReceipt> {
+        self.wb_download_selected(ids, true)
+    }
+    pub fn wb_download_selected(
+        &self,
+        ids: Vec<i64>,
+        include_images: bool,
+    ) -> Result<DownloadReceipt> {
         let mut conn = self.conn();
         let tx = conn.transaction()?;
-        let receipt = enqueue_download(&tx, ids, None)?;
+        let receipt = enqueue_download(&tx, ids, None, include_images)?;
         tx.commit()?;
         Ok(receipt)
     }
     pub fn wb_download_source(&self, biz: &str) -> Result<DownloadReceipt> {
+        self.wb_download_source_with_options(biz, None, true)
+    }
+    pub fn wb_download_source_with_options(
+        &self,
+        biz: &str,
+        limit: Option<u32>,
+        include_images: bool,
+    ) -> Result<DownloadReceipt> {
         let mut conn = self.conn();
         let tx = conn.transaction()?;
-        let ids = {
+        let ids = if let Some(limit) = limit {
+            ensure!(
+                (1..=100000).contains(&limit),
+                "下载篇数须在 1 至 100000 之间"
+            );
+            let occupied = unfinished_download_ids(&tx)?;
+            let mut stmt = tx.prepare(
+                "SELECT id FROM articles WHERE biz=? AND is_deleted=0
+                AND length(trim(COALESCE(content_md,''),char(9)||char(10)||char(13)||char(32)))=0
+                ORDER BY published_at DESC,id DESC",
+            )?;
+            let rows = stmt.query_map([biz], |r| r.get::<_, i64>(0))?;
+            let ids = rows
+                .filter(|id| !id.as_ref().is_ok_and(|id| occupied.contains(id)))
+                .take(limit as usize)
+                .collect::<rusqlite::Result<Vec<_>>>()?;
+            if ids.is_empty() {
+                return Ok(DownloadReceipt::default());
+            }
+            ids
+        } else {
             let mut stmt =
                 tx.prepare("SELECT id FROM articles WHERE biz=? AND is_deleted=0 ORDER BY id")?;
             let rows = stmt.query_map([biz], |r| r.get::<_, i64>(0))?;
             rows.collect::<rusqlite::Result<Vec<_>>>()?
         };
-        let receipt = enqueue_download(&tx, ids, Some(biz.to_string()))?;
+        let receipt = enqueue_download(&tx, ids, Some(biz.to_string()), include_images)?;
         tx.commit()?;
         Ok(receipt)
     }
     pub fn wb_body_available(&self, id: i64) -> Result<bool> {
         Ok(self.conn().query_row("SELECT EXISTS(SELECT 1 FROM articles WHERE id=? AND is_deleted=0 AND length(trim(COALESCE(content_md,''),char(9)||char(10)||char(13)||char(32)))>0)",[id],|r|r.get(0))?)
+    }
+    pub fn wb_downloaded_source_ids(&self, biz: &str, limit: u32) -> Result<Vec<i64>> {
+        ensure!(
+            (1..=100000).contains(&limit),
+            "导出篇数须在 1 至 100000 之间"
+        );
+        let conn = self.conn();
+        let mut stmt = conn.prepare(
+            "SELECT id FROM articles WHERE biz=? AND is_deleted=0
+            AND length(trim(COALESCE(content_md,''),char(9)||char(10)||char(13)||char(32)))>0
+            ORDER BY published_at DESC,id DESC LIMIT ?",
+        )?;
+        let rows = stmt.query_map(params![biz, limit], |r| r.get(0))?;
+        Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
     }
     /// 下载任务未结束时整体拒绝删除，防止后台写回使被删条目重新出现。
     pub fn wb_delete_articles(&self, mut ids: Vec<i64>) -> Result<usize> {
@@ -1913,6 +1962,15 @@ impl Store {
             .conn()
             .query_row("SELECT sn FROM articles WHERE id=?", [id], |r| r.get(0))?)
     }
+    pub(crate) fn wb_download_html(&self, id: i64) -> Result<Option<String>> {
+        Ok(self.conn().query_row(
+            "SELECT COALESCE(NULLIF(a.content_html,''),p.html) FROM articles a
+             LEFT JOIN push_page_cache p ON p.article_id=a.id AND p.expires_at>?
+             WHERE a.id=? AND a.is_deleted=0",
+            params![now(), id],
+            |r| r.get(0),
+        )?)
+    }
     pub fn wb_cached_html(&self, id: i64) -> Result<Option<String>> {
         Ok(self
             .conn()
@@ -1965,9 +2023,12 @@ fn enqueue_download(
     tx: &Transaction<'_>,
     mut ids: Vec<i64>,
     biz: Option<String>,
+    include_images: bool,
 ) -> Result<DownloadReceipt> {
-    ids.sort_unstable();
-    ids.dedup();
+    if biz.is_none() {
+        ids.sort_unstable();
+        ids.dedup();
+    }
     ensure!(!ids.is_empty(), "没有可下载的已入库文章");
     ensure!(ids.len() <= 100000, "一次最多下载十万篇文章，请分批操作");
     let occupied = unfinished_download_ids(tx)?;
@@ -1993,7 +2054,7 @@ fn enqueue_download(
             tx,
             "archive",
             biz,
-            json!({"article_ids":pending,"download_only":true}),
+            json!({"article_ids":pending,"download_only":true,"include_images":include_images}),
         )?);
     }
     super::system_logs::write(

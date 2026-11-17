@@ -396,7 +396,7 @@ function HistoryStartDialog({
           <DialogDescription className="flex items-center gap-1">
             <span>从最新一页往旧翻，按目标停下；同一时刻只抓一个号。</span>
             <InfoTip>
-              三项目标都可空：空即不限，全空等于翻到底。每页条数与页间隔按系统设置里的历史抓取参数；
+              留空表示不限，全部留空将采集到最早一页。篇数包含库内已有文章。每页条数与页间隔按系统设置里的历史抓取参数；
               与巡检共用当前微信号的 24 小时预算，用到只剩保留额度时自动暂停、额度腾出后继续。
               巡检开着时不能抓历史，先在控制面板停止巡检。
             </InfoTip>
@@ -414,17 +414,14 @@ function HistoryStartDialog({
               value={count}
               onChange={(e) => setCount(e.target.value)}
             />
-            <small className="text-[11px] text-muted-foreground">范围内抓到多少篇即停（含库里已有的）</small>
           </div>
           <div className="flex flex-col gap-1.5">
             <Label className="text-xs text-muted-foreground">起始日期</Label>
             <Input type="date" value={since} onChange={(e) => setSince(e.target.value)} />
-            <small className="text-[11px] text-muted-foreground">翻到早于它的文章即停</small>
           </div>
           <div className="flex flex-col gap-1.5">
             <Label className="text-xs text-muted-foreground">截止日期</Label>
             <Input type="date" value={until} onChange={(e) => setUntil(e.target.value)} />
-            <small className="text-[11px] text-muted-foreground">晚于它的文章跳过不计</small>
           </div>
         </div>
 
@@ -827,9 +824,6 @@ export function Accounts({ onNav }: { onNav: (v: View) => void }) {
     <div>
       <div className="mb-3">
         <h1 className="text-xl font-semibold tracking-tight">公众号列表</h1>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          整链采集到的公众号、凭证有效期、最新一篇文章的发布时间、定时巡检与历史抓取进度；操作里可抓取历史文章（一次一个号），「更多」里可查看凭证完整数据、暂停 / 恢复该号巡检
-        </p>
       </div>
 
       <DetailProgressBar className="mb-3" />

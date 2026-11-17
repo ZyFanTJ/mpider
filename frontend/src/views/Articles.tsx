@@ -260,9 +260,6 @@ export function Articles() {
     <div>
       <div className="mb-3">
         <h1 className="text-xl font-semibold tracking-tight">公众号文章</h1>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          已采集的文章列表，查看或补抓 Markdown 正文
-        </p>
       </div>
 
       {/* 补采进度（运行时显示） */}

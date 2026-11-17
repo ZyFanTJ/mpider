@@ -4,12 +4,12 @@ import faqs from '../config/faqs.json';
 import { product, siteUrl, plainText } from '../lib/site';
 
 const capabilities = [
-  { title: '监测本地微信推送', description: '后台发现并保存本机微信中的文章链接，开启处理后按公众号范围和发布时间筛选、去重入库。扫描与处理独立控制，停止扫描后仍可处理已保存链接。' },
-  { title: '同步公众号最新文章', description: '开启主页识别，在微信中手动打开目标公众号主页完成登记，再按需同步首页文章。自动去重，不影响历史采集进度。' },
-  { title: '按需采集历史文章', description: '按追加篇数或截止日期采集历史，支持暂停和检查点续采。会话过期时，按提示重新打开公众号主页，更新后继续原任务。' },
-  { title: '下载正文与图片', description: '单篇、勾选或整号批量下载，自动跳过已有正文。正文与图片保存在自己的电脑里，可在文章库筛选和离线阅读。' },
-  { title: '导出自己的文章资料库', description: '同时导出 Markdown 和保留正文排版的 HTML，附可搜索目录、共享图片与 CSV 清单。下载完成后，单篇、批量或整号都能导出。' },
-  { title: '掌握任务进度与请求节奏', description: '分别管理首页同步、历史采集与正文下载，查看进度、请求记录和日志。可配置各类请求间隔、正文与图片并发，以及列表与文章请求预算。' },
+  { title: '监测本地微信推送', description: '按公众号和发布时间筛选新链接，去重入库。' },
+  { title: '同步公众号最新文章', description: '在微信中打开公众号主页完成登记，按需同步首页文章。' },
+  { title: '按需采集历史文章', description: '按篇数或截止日期采集，可暂停并从上次的位置继续。' },
+  { title: '下载正文与图片', description: '支持单篇、批量或整号下载，保存在本机供离线阅读。' },
+  { title: '导出自己的文章资料库', description: '导出 Markdown 和 HTML，附图片、可搜索目录与 CSV 清单。' },
+  { title: '掌握任务进度与请求节奏', description: '查看任务进度与请求记录，设置间隔、并发数和请求预算。' },
 ];
 
 const schema = [
@@ -23,8 +23,8 @@ const schema = [
       <section class="kp-hero" aria-labelledby="mpider-hero-title">
         <div class="kp-final">
           <p class="kp-kicker"><strong>免费开源</strong></p>
-          <h1 id="mpider-hero-title">公众号批量下载<br><span>现在，自己来。</span></h1>
-          <p class="kp-description">保存正文与图片，留在自己的电脑里。<br>想留下的好内容，自己动手。</p>
+          <h1 id="mpider-hero-title">公众号批量下载</h1>
+          <p class="kp-description">将文章正文与图片保存到本机。</p>
           <nav class="kp-links" aria-label="开始使用 MPider">
             <a class="kp-link kp-link-main" href={product.community} target="_blank" rel="noopener noreferrer" aria-label="加入 QQ 交流群：南山必胜客">加群交流 <span aria-hidden="true">↗</span></a>
             <a class="kp-link" href={product.download} target="_blank" rel="noopener noreferrer">下载 Windows 版 <span aria-hidden="true">↓</span></a>
@@ -34,13 +34,10 @@ const schema = [
         </div>
       </section>
       <section class="kp-capabilities" id="mpider-capabilities" aria-labelledby="mpider-capabilities-title">
-        <p class="kp-faq-label">功能一览 / v2.0.1</p>
-        <h2 id="mpider-capabilities-title">Mpider 可以做什么</h2>
-        <p class="kp-capabilities-intro">从发现文章到离线归档，把想留下的公众号内容留在自己手里。</p>
+        <h2 id="mpider-capabilities-title">主要功能</h2>
         <ul class="kp-capabilities-grid">
-          {capabilities.map((capability, index) => (
+          {capabilities.map((capability) => (
             <li>
-              <span class="kp-capability-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
               <h3>{capability.title}</h3>
               <p>{capability.description}</p>
             </li>
@@ -48,8 +45,7 @@ const schema = [
         </ul>
       </section>
       <section class="kp-faq" id="mpider-risk-faq" aria-labelledby="mpider-faq-title">
-        <p class="kp-faq-label">FAQ / 风险与透明</p>
-        <h2 id="mpider-faq-title">使用之前，先了解这些。</h2>
+        <h2 id="mpider-faq-title">常见问题与使用风险</h2>
         {faqs.map((faq) => (<details open><summary>{faq.question}</summary><div class="kp-answer" set:html={faq.answerHtml} /></details>))}
 
       </section>

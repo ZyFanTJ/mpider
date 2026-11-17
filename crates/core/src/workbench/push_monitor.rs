@@ -324,6 +324,11 @@ fn verification_redirect(current: &Link, location: &str) -> bool {
 }
 
 pub fn metadata(link: &Link, html: &str) -> Result<Metadata> {
+    parse_page(link, html).map(|(meta, _)| meta)
+}
+
+// 元数据完整的页面也可能缺正文；这种页面仍按原规则入库，下载时重新取正文。
+fn parse_page(link: &Link, html: &str) -> Result<(Metadata, bool)> {
     let real_body = ["js_content", "js_text_desc", "picture_page_info_list"]
         .iter()
         .any(|s| html.contains(s));
@@ -405,18 +410,25 @@ pub fn metadata(link: &Link, html: &str) -> Result<Metadata> {
         published_at > 0 && nickname.len() <= 1024 && title.len() <= 4096,
         "网页元信息无效"
     );
-    Ok(Metadata {
-        biz,
-        mid,
-        idx,
-        sn,
-        url: canonical.url,
-        nickname,
-        title,
-        published_at,
-        digest: parsed.digest,
-        cover: parsed.cover,
-    })
+    let has_body = parsed
+        .markdown
+        .as_deref()
+        .is_some_and(|md| !md.trim().is_empty());
+    Ok((
+        Metadata {
+            biz,
+            mid,
+            idx,
+            sn,
+            url: canonical.url,
+            nickname,
+            title,
+            published_at,
+            digest: parsed.digest,
+            cover: parsed.cover,
+        },
+        has_body,
+    ))
 }
 
 fn client() -> Result<reqwest::Client> {
@@ -626,9 +638,16 @@ async fn process_at(
         }
         Ok(HttpPage {
             status: code, html, ..
-        }) => match metadata(&link, &html) {
-            Ok(meta) if !candidate.key.starts_with("article:") || candidate.key == meta.key() => {
-                ("ok", Some(meta), false, Some(code))
+        }) => match parse_page(&link, &html) {
+            Ok((meta, has_body))
+                if !candidate.key.starts_with("article:") || candidate.key == meta.key() =>
+            {
+                (
+                    "ok",
+                    Some((meta, has_body.then_some(html))),
+                    false,
+                    Some(code),
+                )
             }
             Ok(_) => ("invalid_metadata", None, true, Some(code)),
             Err(e) if e.to_string() == "verification_required" => {
@@ -644,8 +663,8 @@ async fn process_at(
         serde_json::json!({"http_status":status,"candidate_id":candidate.id}),
         now(),
     )?;
-    if let Some(meta) = meta {
-        store.push_import(id, candidate.id, &meta, now())?;
+    if let Some((meta, html)) = meta {
+        store.push_import_page(id, candidate.id, &meta, html.as_deref(), now())?;
     } else {
         store.push_result(id, candidate.id, outcome, retry, now() + RETRY_SECONDS)?;
     }

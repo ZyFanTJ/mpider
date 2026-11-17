@@ -8,7 +8,18 @@ const source = (session_id: string) => ({session_id} as Source);
 test("连接中和关闭均不得显示同步就绪", () => {
   assert.equal(homeSyncState({state:"starting"} as Discovery).ready,false);
   assert.equal(homeSyncState({state:"running"} as Discovery).ready,true);
-  assert.equal(homeSyncState({state:"failed"} as Discovery).text,"连接异常");
+  assert.equal(homeSyncState({state:"failed"} as Discovery).text,"识别失败");
+});
+test("旧记录按已保存阶段显示失败位置，并保留具体错误", () => {
+  const failed = (phases: string[], reason = "主页同步已中断，请检查微信登录状态后重新开启") =>
+    homeSyncState({ state: "failed", reason, phases: phases.map((phase, ts) => ({ phase, ts })) } as Discovery);
+  const early = failed(["materialize", "worker_spawned", "stop_requested", "worker_reaped"]);
+  assert.equal(early.text, "启动失败");
+  assert.equal(early.reason, "上次识别进程在就绪前已结束。");
+  assert.equal(failed(["worker_spawned"], "当前 Python 环境缺少主页识别所需的模块。").reason, "当前 Python 环境缺少主页识别所需的模块。");
+  assert.equal(failed(["worker_spawned", "ready", "worker_reaped"]).text, "运行中断");
+  assert.equal(failed([]).reason, "本次主页识别已结束，具体原因未记录。");
+  assert.equal(failed([], "数据目录不可写").reason, "数据目录不可写");
 });
 test("只有旧会话仍在使用时要求恢复；新会话已保存可直接继续", () => {
   assert.equal(needsSessionRecovery(task(),source("old")),true);

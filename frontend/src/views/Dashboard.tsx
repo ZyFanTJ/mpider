@@ -399,9 +399,6 @@ export function Dashboard({ onNav }: { onNav: (v: View) => void }) {
       <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">控制面板</h1>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            开始 / 停止巡检、查看环境状态与前置自检
-          </p>
         </div>
         <button
           type="button"

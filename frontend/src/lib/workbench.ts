@@ -25,7 +25,7 @@ export interface Progress {
 }
 export interface Task {
   id: number; kind: "history" | "home" | "archive"; biz: string | null; state: string;
-  target: { count?: number; cutoff_at?: number; pages?: number; cursor_id?: number; article_ids?: number[]; download_only?: boolean };
+  target: { count?: number; cutoff_at?: number; pages?: number; cursor_id?: number; article_ids?: number[]; download_only?: boolean; include_images?: boolean };
   progress: Progress; reason: string | null; next_action_at: number; created_at: number;
   updated_at: number; result_path: string | null;
 }
@@ -49,6 +49,7 @@ export interface ArchiveRecord { article_id: number; state: string; directory: s
 export interface Discovery {
   id: number; state: string; target: { count?: number; cutoff_at?: number } | null;
   started_at: number; updated_at: number; reason: string | null; observed_requests: number;
+  phases?: { phase: string; ts: number }[];
   accounts: { biz: string; observed_at: number; session_ready: boolean; task_id: number | null }[];
 }
 export interface QueueProgress { task_count: number; completed: number; total: number | null }
@@ -72,16 +73,16 @@ export const syncSourceHome = (biz: string) => invoke<number>("workbench_sync_ho
 export const fetchNextPage = (biz: string) => invoke<number>("workbench_next_page", { biz });
 export const sourceCounts = () => invoke<Record<string, number>>("workbench_source_counts");
 export interface DownloadReceipt { task_id: number | null; requested: number; queued: number; already_downloaded: number; already_queued: number }
-export const downloadSourceBodies = (biz: string) => invoke<DownloadReceipt>("workbench_archive_source", { biz });
+export const downloadSourceBodies = (biz: string, limit?: number, includeImages = true) => invoke<DownloadReceipt>("workbench_archive_source", { biz, limit, includeImages });
 export interface MarkdownExport { directory: string; total: number; with_body: number; missing_body: number; partial_images: number }
-function exportWithProgress(selection: { biz: string } | { articleIds: number[] }) {
+function exportWithProgress(selection: { biz: string; limit?: number } | { articleIds: number[] }) {
   return articleExportProgress.run(onProgress => {
     const channel = new Channel<ArticleExportProgress>(onProgress);
     const command = "biz" in selection ? "workbench_export_source" : "workbench_export_articles";
     return invoke<MarkdownExport | null>(command, { ...selection, onProgress: channel });
   });
 }
-export const exportSourceArticles = (biz: string) => exportWithProgress({ biz });
+export const exportSourceArticles = (biz: string, limit?: number) => exportWithProgress({ biz, limit });
 export const taskAction = (id: number, action: "resume" | "pause" | "cancel") => invoke<void>("workbench_task_action", { id, action });
 export const createExperiment = (cursorId: number, scheduleHours: number[], sessionId: string | null = null) => invoke<number>("workbench_experiment", { cursorId, scheduleHours, sessionId });
 export const cancelExperiment = (id: number) => invoke<void>("workbench_experiment_cancel", { id });
@@ -95,7 +96,7 @@ export const stopDiscovery = () => invoke<void>("workbench_discovery_stop");
 export const startHomeSync = () => invoke<number>("workbench_home_sync_start", { pythonPath: pythonPath() });
 export const recoverSession = (id: number) => invoke<void>("workbench_recover_session", { id, pythonPath: pythonPath() });
 
-export const downloadArticles = (articleIds: number[]) => invoke<DownloadReceipt>("workbench_download_articles", { articleIds });
+export const downloadArticles = (articleIds: number[], includeImages = true) => invoke<DownloadReceipt>("workbench_download_articles", { articleIds, includeImages });
 export const exportArticles = (articleIds: number[]) => exportWithProgress({ articleIds });
 export const deleteArticles = (articleIds: number[]) => invoke<number>("workbench_delete_articles", { articleIds });
 export interface SourceDeletion { deleted_articles: number; cancelled_tasks: number; cancelled_experiments: number; cleanup_pending: number }

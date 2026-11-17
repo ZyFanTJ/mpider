@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { InfoTip } from "@/components/InfoTip";
 import { TextAction } from "@/components/TextAction";
 import { Button } from "@/components/ui/button";
 import { Radio } from "lucide-react";
@@ -22,17 +23,17 @@ export function SessionRecoveryButton({ task, source, disabled = false }: { task
   </div>;
 }
 export function HomeSyncStatus({ snapshot }: { snapshot?: Snapshot }) {
-  const status = snapshot ? homeSyncState(snapshot.discovery) : { text: "读取中", active: false, ready: false };
+  const status = homeSyncState(snapshot?.discovery);
   const failed = snapshot?.discovery?.state === "failed";
-  return <span role="status" title={snapshot?.discovery?.reason || "在公众号页开启或停止主页识别"} className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs">
+  return <span role="status" title={status.reason || "在公众号页开启或停止主页识别"} className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs">
     <span aria-hidden="true" className={cn("size-1.5 shrink-0 rounded-full", status.ready ? "bg-success" : failed ? "bg-destructive" : status.active ? "bg-warning" : "bg-muted-foreground")} />
-    <span>主页识别：<span className={failed ? "text-destructive" : ""}>{status.text}</span></span>
+    <span>主页识别：<span className={failed ? "text-destructive" : ""}>{snapshot ? status.text : "读取中"}</span></span>
   </span>;
 }
 /** 列表页的重要前置操作：独立卡片展示真实监测状态，启动后引导用户手动打开主页。 */
 export function HomeMonitoringCard({ snapshot, windows }: { snapshot?: Snapshot; windows: boolean }) {
   const { busy, run } = useSyncAction();
-  const status = snapshot ? homeSyncState(snapshot.discovery) : { text: "读取中", active: false, ready: false };
+  const status = snapshot ? homeSyncState(snapshot.discovery) : { text: "读取中", active: false, ready: false, reason: null };
   const stopping = snapshot?.discovery?.state === "stopping";
   const failed = snapshot?.discovery?.state === "failed";
   return <section aria-label="主页识别" aria-busy={busy} className={cn("rounded-xl border bg-card p-4", !status.active && "border-warning/40")}>
@@ -40,9 +41,10 @@ export function HomeMonitoringCard({ snapshot, windows }: { snapshot?: Snapshot;
       <div className="flex min-w-0 items-start gap-3">
         <Radio aria-hidden="true" className={cn("mt-0.5 size-5 shrink-0", status.ready ? "text-success" : "text-warning")} />
         <div className="space-y-1.5">
-          <div className="flex flex-wrap items-center gap-2"><h2 className="text-base font-semibold">主页识别</h2><span role="status" className={cn("rounded-full bg-muted px-2 py-0.5 text-xs", status.ready ? "text-success" : failed ? "text-destructive" : "text-muted-foreground")}>{status.ready ? "等待打开主页" : status.text}</span></div>
-          <p className="text-sm">{!windows ? "请在 Windows 专机开启识别，再在微信中打开公众号主页。" : status.ready ? "请在微信中手动打开公众号主页，识别后会登记公众号与会话。" : status.active ? "正在准备主页识别，请稍候。" : "先开启主页识别，再在微信中手动打开公众号主页。"}</p>
-          <p className="text-xs text-muted-foreground">只登记公众号与采集会话，文章同步由下方列表单独发起。持续发现新文章请使用左侧「推送监测」。</p>
+          <div className="flex flex-wrap items-center gap-2"><h2 className="text-base font-semibold">主页识别</h2><InfoTip label="主页识别说明">识别后登记公众号和会话。要采集文章，请在公众号列表中选择同步或历史采集。</InfoTip><span role="status" className={cn("rounded-full bg-muted px-2 py-0.5 text-xs", status.ready ? "text-success" : failed ? "text-destructive" : "text-muted-foreground")}>{status.ready ? "等待打开主页" : status.text}</span></div>
+          {snapshot && !failed && !windows && <p className="text-sm">请在已登录微信的 Windows 电脑上开启识别。</p>}
+          {windows && status.ready && <p className="text-sm">请在微信中打开要登记的公众号主页。</p>}
+          {windows && snapshot && !failed && !status.active && <p className="text-sm">开启后，在微信中打开公众号主页。</p>}
         </div>
       </div>
       <Button type="button" className="shrink-0" variant={status.active ? "outline" : "default"} loading={busy} disabled={!snapshot || !windows || stopping}
@@ -50,7 +52,7 @@ export function HomeMonitoringCard({ snapshot, windows }: { snapshot?: Snapshot;
         {busy ? (status.active ? "正在停止…" : "正在开启…") : stopping ? "正在停止…" : status.active ? "停止主页识别" : failed ? "重新开启识别" : "开启主页识别"}
       </Button>
     </div>
-    {snapshot?.discovery?.reason && <p role={failed ? "alert" : "status"} className={cn("mt-3 break-words border-t border-border-muted pt-3 text-xs", failed ? "text-destructive" : "text-warning")}>{snapshot.discovery.reason}</p>}
+    {status.reason && <p role={failed ? "alert" : "status"} className={cn("mt-3 break-words border-t border-border-muted pt-3 text-xs", failed ? "text-destructive" : "text-warning")}>{status.reason}</p>}
   </section>;
 }
 export function SessionRecoveryPanel({ snapshot }: { snapshot?: Snapshot }) {

@@ -25,6 +25,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { InfoTip } from "@/components/InfoTip";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -719,8 +720,7 @@ function FactorTable({
   return (
     <Card className="mb-3">
       <CardHeader className="p-4 pb-2">
-        <CardTitle className="text-sm">{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+        <CardTitle className="flex items-center gap-1 text-sm">{title} <InfoTip label={`${title}说明`}>{description}</InfoTip></CardTitle>
       </CardHeader>
       <CardContent className="p-0 pb-2">
         <Table className="min-w-[760px]">
@@ -814,7 +814,6 @@ export function RateLimit({ onNav }: { onNav: (v: View) => void }) {
         <div>
           <h1 className="text-xl font-semibold tracking-tight">限流分析</h1>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            旧 getmsg 链路的请求节奏、巡检轮次与整机退避。原生采集使用独立请求明细与预算。
             <button type="button" className="text-link underline" onClick={() => onNav("native")}>查看原生记录</button>
           </p>
         </div>
@@ -991,8 +990,7 @@ export function RateLimit({ onNav }: { onNav: (v: View) => void }) {
       {s && s.by_source.length > 0 && (
         <Card className="mb-3">
           <CardHeader className="p-4 pb-2">
-            <CardTitle className="text-sm">按来源统计</CardTitle>
-            <CardDescription>同一微信号下三条路径共用一道闸门与一份每日预算</CardDescription>
+            <CardTitle className="flex items-center gap-1 text-sm">按来源统计 <InfoTip label="按来源统计说明">同一微信号下三条路径共用一道闸门与一份每日预算</InfoTip></CardTitle>
           </CardHeader>
           <CardContent className="p-0 pb-2">
             <Table className="min-w-[640px]">
@@ -1042,24 +1040,21 @@ export function RateLimit({ onNav }: { onNav: (v: View) => void }) {
 
       <Card className="mb-3">
         <CardHeader className="p-4 pb-2">
-          <CardTitle className="text-sm">巡检轮次</CardTitle>
-          <CardDescription>一轮 = 全库公众号各查一遍；「每号请求」明显大于 1 说明翻页多或凭证过期重采多</CardDescription>
+          <CardTitle className="flex items-center gap-1 text-sm">巡检轮次 <InfoTip label="巡检轮次说明">一轮 = 全库公众号各查一遍；「每号请求」明显大于 1 说明翻页多或凭证过期重采多</InfoTip></CardTitle>
         </CardHeader>
         <CardContent className="p-0 pb-2">{s ? <PassesTable passes={s.passes} /> : null}</CardContent>
       </Card>
 
       <Card className="mb-3">
         <CardHeader className="p-4 pb-2">
-          <CardTitle className="text-sm">最近执行单元</CardTitle>
-          <CardDescription>每个巡检批次算一个单元（最近 80 条）；任务执行频率看开始时间的间隔</CardDescription>
+          <CardTitle className="text-sm">最近 80 个巡检批次</CardTitle>
         </CardHeader>
         <CardContent className="p-0 pb-2">{s ? <RunsTable runs={s.runs} /> : null}</CardContent>
       </Card>
 
       <Card className="mb-3">
         <CardHeader className="p-4 pb-2">
-          <CardTitle className="text-sm">整机退避记录</CardTitle>
-          <CardDescription>IP 级 5 分钟起翻倍封顶 1 小时；账号级 6 小时起翻倍封顶 24 小时；干净跑完一批等级归零</CardDescription>
+          <CardTitle className="flex items-center gap-1 text-sm">整机退避记录 <InfoTip label="整机退避记录说明">IP 级 5 分钟起翻倍封顶 1 小时；账号级 6 小时起翻倍封顶 24 小时；干净跑完一批等级归零</InfoTip></CardTitle>
         </CardHeader>
         <CardContent className="p-0 pb-2">{s ? <CooldownsTable rows={s.cooldowns} /> : null}</CardContent>
       </Card>

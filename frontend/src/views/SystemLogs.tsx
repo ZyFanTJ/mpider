@@ -1,3 +1,4 @@
+import { InfoTip } from "@/components/InfoTip";
 /** 系统日志：持久化记录的模块、关联标识与分析字段；分页查看和完整筛选导出。 */
 import { useDeferredValue, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -56,7 +57,7 @@ export function SystemLogs({ initialExperimentId = null }: { initialExperimentId
     finally { setExporting(false); }
   }
   return <div className="space-y-5">
-    <div><h1 className="text-xl font-semibold">系统日志</h1><p className="mt-1 text-sm text-muted-foreground">按业务模块查看运行过程，使用任务、请求和游标标识追踪结果。</p></div>
+    <header className="flex items-center gap-1"><h1 className="text-xl font-semibold">系统日志</h1><InfoTip label="日志保留与导出说明">保留近 {query.data?.retention_days ?? "—"} 天，最多 {query.data?.max_rows.toLocaleString() ?? "—"} 条。导出包含当前筛选下的全部记录。</InfoTip></header>
     <Card><CardContent className="space-y-4 pt-5">
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex min-w-36 flex-col gap-1"><Label htmlFor="log-module">业务模块</Label><select id="log-module" className={selectClass} value={module} onChange={e => setModule(e.target.value)}><option value="">全部模块</option>{Object.entries(SYSTEM_LOG_MODULE_LABELS).map(([value, name]) => <option key={value} value={value}>{name}</option>)}</select></div>
@@ -73,8 +74,7 @@ export function SystemLogs({ initialExperimentId = null }: { initialExperimentId
         <Button variant="outline" disabled={invalid || query.isFetching} onClick={() => { void query.refetch(); }}><RefreshCw className="mr-2 size-4" />刷新</Button>
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-3">
-        <p className="text-xs text-muted-foreground">保留近 {query.data?.retention_days ?? "—"} 天，最多 {query.data?.max_rows.toLocaleString() ?? "—"} 条。导出包含全部匹配记录。</p>
-        <div className="flex items-end gap-2"><div className="flex flex-col gap-1"><Label htmlFor="log-format">导出格式</Label><select id="log-format" aria-label="日志导出格式" className={selectClass} value={format} onChange={e => setFormat(e.target.value as "json" | "txt")}><option value="json">JSON · 结构化分析</option><option value="txt">文本 · 阅读</option></select></div><Button disabled={exporting || invalid || search !== keyword || query.isPending || !!query.error} onClick={() => { void download(); }}><Download className="mr-2 size-4" />{exporting ? "正在导出…" : "导出系统日志"}</Button></div>
+        <div className="flex items-end gap-2"><div className="flex flex-col gap-1"><Label htmlFor="log-format">导出格式</Label><select id="log-format" aria-label="日志导出格式" className={selectClass} value={format} onChange={e => setFormat(e.target.value as "json" | "txt")}><option value="json">JSON</option><option value="txt">文本</option></select></div><Button disabled={exporting || invalid || search !== keyword || query.isPending || !!query.error} onClick={() => { void download(); }}><Download className="mr-2 size-4" />{exporting ? "正在导出…" : "导出系统日志"}</Button></div>
       </div>
     </CardContent></Card>
     {invalid && <p role="alert" className="text-sm text-destructive">请检查时间范围、任务 ID 和实验 ID。开始时间不能晚于结束时间。</p>}

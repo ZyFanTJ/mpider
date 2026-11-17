@@ -64,13 +64,12 @@ export function NativeCollector() {
     <div className="mx-auto max-w-6xl space-y-4">
       <div>
         <h1 className="text-xl font-semibold">原生采集</h1>
-        <p className="mt-1 text-sm text-muted-foreground">在微信中打开公众号主页，点击开始后自动识别并采集文章。</p>
       </div>
       {!windows && <Alert><AlertDescription>请在已登录微信的 Windows 专机运行。此处可查看已有采集记录。</AlertDescription></Alert>}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">采集当前公众号</CardTitle>
-          <CardDescription>程序会刷新当前主页，读取公众号名称，再自动翻页并去重入库。</CardDescription>
+          <CardDescription>开始前，请在微信中打开目标公众号主页。</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-[1fr_180px]">
@@ -101,7 +100,7 @@ export function NativeCollector() {
       <Card aria-live="polite">
         <CardHeader>
           <CardTitle className="text-base">{phase}</CardTitle>
-          <CardDescription>{!job && latestJob?.nickname ? `上次采集：${latestJob.nickname}` : "公众号识别后将显示在上方，文章会自动去重。"}</CardDescription>
+          {!job && latestJob?.nickname && <CardDescription>上次采集：{latestJob.nickname}</CardDescription>}
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid grid-cols-3 gap-4 text-sm">

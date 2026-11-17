@@ -231,7 +231,7 @@ export function WxAccounts({ onNav }: { onNav: (v: View) => void }) {
       <div className="mb-3">
         <h1 className="text-xl font-semibold tracking-tight">微信号管理</h1>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          抓到凭证的微信号会自动登记到这里；采集同一时刻只用一个微信号，换号请先在微信客户端切换登录，再在此激活对应条目
+          换号时请先在微信客户端登录，再激活对应微信号。
         </p>
       </div>
 

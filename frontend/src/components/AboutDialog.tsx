@@ -21,15 +21,14 @@ export function AboutDialog({ open, onOpenChange, version }: { open: boolean; on
       </dl>
       <section className="space-y-2 border-t pt-4" aria-labelledby="about-changelog">
         <div className="flex items-center justify-between gap-3"><h2 id="about-changelog" className="text-sm font-medium">最新更新</h2><ExternalLink href={PROJECT_LINKS.changelog} className="shrink-0 text-xs">完整更新记录 ↗</ExternalLink></div>
-        <p className="text-xs text-muted-foreground">随当前应用提供的更新记录</p>
         <h3 className="text-sm font-medium">{latestTitle}</h3>
         <div className="prose prose-sm max-w-none text-xs dark:prose-invert prose-p:my-2 prose-ul:my-2 prose-li:my-1">
           <ReactMarkdown components={{ a: ({ href, children }) => <ExternalLink href={new URL(href || "", `${PROJECT_LINKS.github}/blob/main/`).href}>{children}</ExternalLink> }}>{latestBody.join("\n").trim()}</ReactMarkdown>
         </div>
       </section>
       <section className="space-y-2 rounded-lg border bg-muted/40 p-3 text-sm" aria-label="MP2Rss 持续订阅">
-        <p className="font-medium">让更新持续送达</p>
-        <p className="text-xs text-muted-foreground">想持续订阅公众号更新？MP2Rss 提供 RSS 与结构化文章数据，接入阅读器或自己的工作流。</p>
+        <p className="font-medium">RSS 订阅</p>
+        <p className="text-xs text-muted-foreground">MP2Rss 提供公众号 RSS 订阅与结构化文章数据。</p>
         <ExternalLink href={PROJECT_LINKS.mp2rss} className="inline-block">了解 MP2Rss ↗</ExternalLink>
       </section>
     </DialogContent>

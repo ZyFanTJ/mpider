@@ -58,7 +58,6 @@ export function Sidebar({
         <img src={appIcon} alt="" aria-hidden className="size-9 shrink-0 select-none" draggable={false} />
         <div className="leading-tight">
           <div className="text-sm font-semibold text-foreground">MPider</div>
-          <div className="text-[11px] text-muted-foreground">公众号采集控制台</div>
         </div>
       </div>
 

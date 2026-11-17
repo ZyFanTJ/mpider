@@ -8,6 +8,8 @@ use anyhow::{ensure, Context};
 use rusqlite::Transaction;
 use serde_json::json;
 
+const PAGE_CACHE_SECONDS: f64 = 24. * 3600.;
+
 pub(super) const SCHEMA: &str = r#"
 CREATE TABLE IF NOT EXISTS push_monitor(id INTEGER PRIMARY KEY CHECK(id=1),document TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS push_candidates(
@@ -21,8 +23,18 @@ CREATE INDEX IF NOT EXISTS push_pending ON push_candidates(state,retry_at,id);
 CREATE INDEX IF NOT EXISTS push_discovered_time ON push_candidates(first_seen_at DESC,id DESC);
 CREATE INDEX IF NOT EXISTS push_event_time ON push_candidates(COALESCE(finished_at,first_seen_at) DESC,id DESC);
 CREATE INDEX IF NOT EXISTS push_request_budget ON wb_requests(json_extract(document,'$.purpose'),json_extract(document,'$.started_at'));
+CREATE TABLE IF NOT EXISTS push_page_cache(article_id INTEGER PRIMARY KEY,expires_at REAL NOT NULL,html TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS push_page_expiry ON push_page_cache(expires_at);
+CREATE TRIGGER IF NOT EXISTS push_page_article_deleted AFTER DELETE ON articles BEGIN
+ DELETE FROM push_page_cache WHERE article_id=OLD.id;
+END;
+CREATE TRIGGER IF NOT EXISTS push_page_article_updated AFTER UPDATE OF is_deleted,content_md ON articles
+ WHEN NEW.is_deleted!=0 OR length(trim(COALESCE(NEW.content_md,''),char(9)||char(10)||char(13)||char(32)))>0 BEGIN
+ DELETE FROM push_page_cache WHERE article_id=NEW.id;
+END;
 "#;
 pub(super) fn migrate(conn: &Connection) -> Result<()> {
+    conn.execute("DELETE FROM push_page_cache WHERE expires_at<=?", [now()])?;
     let has_config = conn
         .prepare("PRAGMA table_info(push_candidates)")?
         .query_map([], |r| r.get::<_, String>(1))?
@@ -407,6 +419,17 @@ impl Store {
         Ok(())
     }
     pub fn push_import(&self, id: i64, candidate: i64, meta: &Metadata, ts: f64) -> Result<()> {
+        self.push_import_page(id, candidate, meta, None, ts)
+    }
+
+    pub(crate) fn push_import_page(
+        &self,
+        id: i64,
+        candidate: i64,
+        meta: &Metadata,
+        html: Option<&str>,
+        ts: f64,
+    ) -> Result<()> {
         let mut conn = self.conn();
         let tx = conn.transaction()?;
         if !queue_active(&tx, id)? {
@@ -472,6 +495,17 @@ impl Store {
             params![meta.biz, meta.mid, meta.idx],
             |r| r.get(0),
         )?;
+        if let Some(html) = html {
+            tx.execute("DELETE FROM push_page_cache WHERE expires_at<=?", [ts])?;
+            tx.execute(
+                "INSERT INTO push_page_cache(article_id,expires_at,html)
+                 SELECT id,?2,?3 FROM articles WHERE id=?1 AND is_deleted=0
+                   AND COALESCE(content_html,'')=''
+                   AND length(trim(COALESCE(content_md,''),char(9)||char(10)||char(13)||char(32)))=0
+                 ON CONFLICT(article_id) DO UPDATE SET expires_at=excluded.expires_at,html=excluded.html",
+                params![article_id, ts + PAGE_CACHE_SECONDS, html],
+            )?;
+        }
         tx.execute(
             "UPDATE push_candidates SET article_id=? WHERE id=?",
             params![article_id, candidate],

@@ -62,22 +62,30 @@ fn valid_file(directory: &Path, path: &str) -> Result<()> {
     Ok(())
 }
 
+#[derive(Debug)]
+struct MissingPythonModule;
+
+impl std::fmt::Display for MissingPythonModule {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("当前 Python 环境缺少主页识别所需的模块。")
+    }
+}
+
+impl std::error::Error for MissingPythonModule {}
+
 pub async fn run(store: Arc<Store>, root: PathBuf, id: i64, python: String) {
     crate::phases::begin(-id);
     crate::phases::mark("持续识别公众号");
     let started = now();
     let result = run_inner(&store, &root, id, &python).await;
-    let reason = result
-        .err()
-        .map(|_| "主页同步已中断，请检查微信登录状态后重新开启");
+    let failed = result.is_err();
+    let reason = result.err().and_then(|error| {
+        error.downcast_ref::<MissingPythonModule>().map(ToString::to_string)
+    });
     let _ = store.wb_discovery_state(
         id,
-        if reason.is_some() {
-            "failed"
-        } else {
-            "stopped"
-        },
-        reason,
+        if failed { "failed" } else { "stopped" },
+        reason.as_deref(),
     );
     let run = store.wb_discovery().ok().flatten();
     let _ = store.append_run_log(&RunLogEvent {
@@ -85,14 +93,16 @@ pub async fn run(store: Arc<Store>, root: PathBuf, id: i64, python: String) {
         started_at: started,
         finished_at: now(),
         accounts: run.as_ref().map_or(0, |r| r.accounts.len() as i64),
-        ok: i64::from(reason.is_none()),
-        failed: i64::from(reason.is_some()),
+        ok: i64::from(!failed),
+        failed: i64::from(failed),
         list_calls: run.as_ref().map_or(0, |r| r.observed_requests as i64),
-        note: Some(
-            reason
-                .unwrap_or("持续识别已停止，已创建任务继续运行")
-                .into(),
-        ),
+        note: Some(reason.unwrap_or_else(|| {
+            if failed {
+                "主页识别已中断，未记录具体原因。".into()
+            } else {
+                "持续识别已停止，已创建任务继续运行".into()
+            }
+        })),
         ..Default::default()
     });
     crate::phases::finish(-id);
@@ -175,7 +185,10 @@ async fn run_inner(store: &Store, root: &Path, id: i64, python: &str) -> Result<
                             let message=match reason.as_str(){"ambiguous_callback"=>"观察到并发回调歧义，已跳过该响应，继续等待新的主页请求", "session_material_incomplete"=>"公众号已登记，但独立请求会话材料未齐全，等待下一次打开主页", _=>"观察到无法解析的桥消息，继续等待新的主页请求"};
                             store.wb_discovery_state(id,"running",Some(message))?;
                         }
-                        Event::Fault{reason}=>{let _=reason; anyhow::bail!("观察器停止");}
+                        Event::Fault{reason}=>{
+                            if reason == "missing_python_module" { return Err(MissingPythonModule.into()); }
+                            anyhow::bail!("观察器停止");
+                        }
                         Event::Stopped=>{anyhow::bail!("观察器提前停止");}
                     }
                 }

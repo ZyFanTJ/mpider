@@ -11,30 +11,34 @@ export function InfoTip({
   children,
   className,
   side = "bottom",
+  label = "查看说明",
 }: {
   children: ReactNode;
   className?: string;
+  label?: string;
   side?: "top" | "bottom" | "left" | "right";
 }) {
-  // 点击也能开关（触屏 / 不想悬停时），悬停仍由 Radix 自己管。
-  const [open, setOpen] = useState<boolean | undefined>(undefined);
+  const [open, setOpen] = useState(false);
   return (
     <TooltipProvider delayDuration={150}>
       <Tooltip open={open} onOpenChange={setOpen}>
         <TooltipTrigger asChild>
           <button
             type="button"
-            aria-label="查看说明"
-            onClick={() => setOpen((o) => !o)}
+            aria-label={label}
+            onClick={(event) => {
+              event.preventDefault(); // Radix 默认会在点击触发器时关闭气泡。
+              setOpen(true);
+            }}
             className={cn(
-              "inline-flex shrink-0 items-center align-middle text-muted-foreground hover:text-foreground focus-visible:outline-none",
+              "inline-flex size-6 shrink-0 items-center justify-center rounded align-middle text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               className,
             )}
           >
             <CircleHelp className="size-3.5" />
           </button>
         </TooltipTrigger>
-        <TooltipContent side={side} className="max-w-[360px] text-xs">
+        <TooltipContent side={side} collisionPadding={8} className="max-w-[min(22rem,calc(100vw-1rem))] text-xs font-normal tracking-normal">
           {children}
         </TooltipContent>
       </Tooltip>

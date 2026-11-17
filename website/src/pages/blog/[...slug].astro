@@ -27,7 +27,6 @@ const schema = [{
     <nav class="breadcrumbs" aria-label="当前位置"><a href={sitePath()}>首页</a><span aria-hidden="true"> / </span><a href={sitePath('blog/')}>使用指南</a></nav>
     <article>
       <header class="article-header">
-        <p class="reading-eyebrow">MPider / 使用指南</p>
         <h1>{post.data.title}</h1>
         <p class="article-meta"><time datetime={post.data.pubDate.toISOString()}>{formatDate(post.data.pubDate)}</time> · MPider</p>
         <p class="reading-intro">{post.data.description}</p>
@@ -40,7 +39,7 @@ const schema = [{
       )}
       <div class="prose"><Content /></div>
     </article>
-    <aside class="article-next"><h2>自己动手，先把使用边界看清。</h2><p>MPider 免费开源，支持本地保存正文与图片。使用个人微信会话仍有账号风险。</p><a href={`${sitePath()}#mpider-risk-faq`}>了解 MPider 与使用风险 →</a></aside>
+    <aside class="article-next"><h2>使用风险</h2><p>使用个人微信会话采集文章可能触发账号限制。</p><a href={`${sitePath()}#mpider-risk-faq`}>了解 MPider 与使用风险 →</a></aside>
     <a class="back-link" href={sitePath('blog/')}>← 更多使用指南</a>
   </main>
 </BaseLayout>
