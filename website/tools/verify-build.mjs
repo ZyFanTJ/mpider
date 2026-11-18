@@ -4,7 +4,7 @@ import { readFile, readdir, access } from 'node:fs/promises';
 import path from 'node:path';
 
 const output = path.resolve('dist');
-const deployment = new URL(process.env.SITE_URL || 'https://areyoubugcoder.github.io/mpider/');
+const deployment = new URL(process.env.SITE_URL || 'https://zyfantj.github.io/mpider/');
 const prefix = deployment.pathname.replace(/\/+$/, '');
 deployment.pathname = `${prefix}/`;
 const files = [];
@@ -23,8 +23,8 @@ assert(homepage.includes('免费开源') && homepage.includes('公众号批量�
 const summaries = [...homepage.matchAll(/<summary[^>]*>([\s\S]*?)<\/summary>/g)];
 assert.equal(summaries[0]?.[1], '为什么开源？', '为什么开源必须是第一条 FAQ');
 assert.equal([...homepage.matchAll(/<details\b[^>]*\bopen(?:\s|>|=)/g)].length, 4, '四条 FAQ 应默认展开');
-for (const url of ['https://qm.qq.com/q/s4JavFxA3e', 'https://github.com/areyoubugcoder/mpider',
-  'https://github.com/areyoubugcoder/mpider/releases/latest', 'https://xhslink.cn/o/8c23uHExcT6']) {
+for (const url of ['https://qm.qq.com/q/s4JavFxA3e', 'https://github.com/ZyFanTJ/mpider',
+  'https://github.com/ZyFanTJ/mpider/releases/latest', 'https://xhslink.cn/o/8c23uHExcT6']) {
   assert(homepage.includes(url), `缺少已确认入口：${url}`);
 }
 assert(!homepage.includes('重播开场') && !homepage.includes('跳过开场'), '不应恢复已移除的开场');

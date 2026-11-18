@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         请先查看 README、更新记录和已有 Issue。不要上传数据库、会话文件、原始抓包、完整协议响应或未脱敏日志。此表单不会自动收集或上传本机材料。
-        安全漏洞请参阅 [安全政策](https://github.com/areyoubugcoder/mpider/blob/main/SECURITY.md)，勿在公开 Issue 披露细节。
+        安全漏洞请参阅 [安全政策](https://github.com/ZyFanTJ/mpider/blob/main/SECURITY.md)，勿在公开 Issue 披露细节。
   - type: input
     id: version
     attributes:

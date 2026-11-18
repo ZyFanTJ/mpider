@@ -1,6 +1,6 @@
 # 贡献指南
 
-提交问题先查看 [README](README.md)、[更新记录](CHANGELOG.md) 和[使用条件与验证边界](README.md#请求控制与适配范围)。功能问题使用 [Issue 模板](https://github.com/areyoubugcoder/mpider/issues/new/choose)；漏洞请走[安全政策](SECURITY.md)中的私密渠道。
+提交问题先查看 [README](README.md)、[更新记录](CHANGELOG.md) 和[使用条件与验证边界](README.md#请求控制与适配范围)。功能问题使用 [Issue 模板](https://github.com/ZyFanTJ/mpider/issues/new/choose)；漏洞请走[安全政策](SECURITY.md)中的私密渠道。
 
 ## 开发环境
 

@@ -7,7 +7,7 @@ members = ["crates/article-md", "crates/core", "src-tauri"]
 edition = "2021"
 version = "2.0.1"
 license = "MIT"
-repository = "https://github.com/areyoubugcoder/mpider"
+repository = "https://github.com/ZyFanTJ/mpider"
 
 [profile.release]
 strip = true          # 去符号，减小体积 + 提高逆向门槛

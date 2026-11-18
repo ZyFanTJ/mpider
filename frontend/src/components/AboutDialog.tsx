@@ -17,7 +17,7 @@ export function AboutDialog({ open, onOpenChange, version }: { open: boolean; on
       </DialogHeader>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
         <dt className="text-muted-foreground">当前版本</dt><dd><ExternalLink href={PROJECT_LINKS.changelog} title="查看 GitHub 更新记录">v{version}</ExternalLink></dd>
-        <dt className="text-muted-foreground">GitHub</dt><dd className="min-w-0 break-all"><ExternalLink href={PROJECT_LINKS.github}>github.com/areyoubugcoder/mpider</ExternalLink></dd>
+        <dt className="text-muted-foreground">GitHub</dt><dd className="min-w-0 break-all"><ExternalLink href={PROJECT_LINKS.github}>github.com/ZyFanTJ/mpider</ExternalLink></dd>
       </dl>
       <section className="space-y-2 border-t pt-4" aria-labelledby="about-changelog">
         <div className="flex items-center justify-between gap-3"><h2 id="about-changelog" className="text-sm font-medium">最新更新</h2><ExternalLink href={PROJECT_LINKS.changelog} className="shrink-0 text-xs">完整更新记录 ↗</ExternalLink></div>

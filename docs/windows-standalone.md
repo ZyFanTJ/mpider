@@ -6,9 +6,11 @@ v2.0.1 包含独立监测、按公众号任务、Markdown/HTML 双格式导出�
 
 ## 使用发行包
 
-推荐安装 `MPider_2.0.1_x64-setup.exe`，也可选择 MSI；安装版携带与便携包相同的 Python 环境和许可，并支持应用内签名更新。以下步骤介绍便携 ZIP 的使用。
+推荐安装 `MPider_2.0.1_x64-setup.exe`，也可选择 MSI。精简安装版包含 Python/Frida 环境和完整许可。安装向导会检测 WebView2，已安装时直接继续，缺少时联网下载并安装。配置更新签名的正式安装版支持应用内更新。以下步骤介绍便携 ZIP 的使用。
 
-1. 从 [GitHub Releases](https://github.com/areyoubugcoder/mpider/releases) 下载 `MPider-v版本-windows-x64.zip` 和 `SHA256SUMS`，核对来源及摘要：
+自动下载失败时，可使用安装向导欢迎页的手动下载链接，或下载[微软在线安装程序](https://go.microsoft.com/fwlink/p/?LinkId=2124703)与 [x64 完整离线安装程序](https://go.microsoft.com/fwlink/?LinkId=2124701)。手动安装 WebView2 后，重新运行 MPider 安装向导。目标电脑已装 WebView2 时，精简包可离线安装；离线电脑缺少 WebView2 时，需要先在其他电脑下载完整运行库并复制过去。
+
+1. 从 [GitHub Releases](https://github.com/ZyFanTJ/mpider/releases) 下载 `MPider-v版本-windows-x64.zip` 和 `SHA256SUMS`，核对来源及摘要：
 
    ```powershell
    Get-FileHash .\MPider-v2.0.1-windows-x64.zip -Algorithm SHA256

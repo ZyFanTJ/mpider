@@ -2,7 +2,7 @@ import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
 
 // 同时支持项目子路径与独立域名；部署 URL 统一决定 canonical、资源和订阅地址。
-const deployment = new URL(process.env.SITE_URL || 'https://areyoubugcoder.github.io/mpider/');
+const deployment = new URL(process.env.SITE_URL || 'https://zyfantj.github.io/mpider/');
 if (deployment.protocol !== 'https:') throw new Error('SITE_URL 必须使用 HTTPS');
 const base = deployment.pathname.replace(/\/+$/, '') || '/';
 

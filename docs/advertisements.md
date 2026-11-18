@@ -2,7 +2,7 @@
 
 广告内容维护在 [`config/advertisements.json`](../config/advertisements.json)。发布到 GitHub 的 `main` 后，已安装应用会在启动时及每 30 分钟读取该文件的公开 Raw 地址，无需重新打包。
 
-当前固定地址：`https://raw.githubusercontent.com/areyoubugcoder/mpider/main/config/advertisements.json`。仅在本地分支修改不会影响已安装应用；文件尚未发布、断网或加载失败时会使用最近有效缓存，缓存不可用则显示随应用打包的默认配置。
+当前固定地址：`https://raw.githubusercontent.com/ZyFanTJ/mpider/main/config/advertisements.json`。仅在本地分支修改不会影响已安装应用；文件尚未发布、断网或加载失败时会使用最近有效缓存，缓存不可用则显示随应用打包的默认配置。
 
 ## 配置契约
 

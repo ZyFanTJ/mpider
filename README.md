@@ -1,181 +1,151 @@
-# MPider · 公众号采集工作台
+<div align="center">
 
-在自己的 Windows 电脑上采集微信公众号文章，保存正文与图片，离线阅读，并同时导出 **Markdown 和 HTML**。
+<h1>MPider</h1>
 
-使用已登录的微信会话，通过当前 Windows 原生列表与会话协议采集。主页识别、列表采集和正文下载分别控制，文章与任务进度保存在本机。
+<p>微信公众号文章采集与本地归档</p>
+<p>按公众号管理文章，保存正文与图片，离线阅读，同时导出 Markdown 和 HTML。</p>
 
-> [!WARNING]
-> **所有需要使用个人微信号的客户端，都可能存在封号风险，MPider 也不例外。** 无论是扫码登录、读取已登录会话，还是通过其他方式使用个人微信号，本地运行、开源、低频请求或使用账号池，都不代表账号安全，也无法保证不被封号。使用前请充分评估风险，避免使用承载重要联系人、工作或支付用途的账号。
->
-> **警惕将个人微信有效凭证上传云端的“账号池”。** 第三方掌握有效凭证后，可能在凭证权限与有效期内，以你的账号身份从云端发起请求；这些请求可能并非由你本人操作，却让你的账号承担限制、封禁及隐私泄露风险。**本项目反对隐瞒凭证上传、未经同意或超出授权使用个人账号的行为。**
->
-> **未开源的客户端，请谨慎使用；宣称开源，也要警惕“假开源”。** 如果只公开界面或外围代码，却不公开核心采集逻辑，仍以“开源客户端”让用户相信采集行为可被核查，就属于这里所说的“假开源”。尤其需要核查凭证如何获取、保存、使用，以及是否上传云端。**有公开仓库，不等于核心逻辑已公开，更不等于下载的安装包与源码一致或使用安全。**
+<p>
+  <a href="https://github.com/ZyFanTJ/mpider/releases"><img src="https://img.shields.io/badge/version-2.0.1-2563EB?style=flat-square" alt="版本 2.0.1"></a>
+  <img src="https://img.shields.io/badge/platform-Windows%2010%2F11%20x64-475569?style=flat-square" alt="Windows 10/11 x64">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-15803D?style=flat-square" alt="MIT 开源许可"></a>
+</p>
 
-[项目官网](https://areyoubugcoder.github.io/mpider/) · [下载客户端](https://github.com/areyoubugcoder/mpider/releases/latest) · [全部版本](https://github.com/areyoubugcoder/mpider/releases) · [使用说明](docs/windows-standalone.md) · [常见问题](docs/faq.md) · [反馈问题](https://github.com/areyoubugcoder/mpider/issues/new/choose) · [演示视频](https://xhslink.cn/o/8c23uHExcT6) · [进群交流](https://qm.qq.com/q/s4JavFxA3e)
+<p>
+  <a href="https://github.com/ZyFanTJ/mpider/releases/latest">下载客户端</a> ·
+  <a href="https://zyfantj.github.io/mpider/">项目官网</a> ·
+  <a href="docs/windows-standalone.md">使用说明</a> ·
+  <a href="docs/faq.md">常见问题</a> ·
+  <a href="https://github.com/ZyFanTJ/mpider/issues/new/choose">反馈问题</a>
+</p>
+<p>
+  <a href="https://xhslink.cn/o/8c23uHExcT6">演示视频</a> ·
+  <a href="https://qm.qq.com/q/s4JavFxA3e">进群交流</a> ·
+  <a href="CHANGELOG.md">更新记录</a>
+</p>
 
-> **v2.0.1 · Windows x64 正式开源版**。当前仅验证微信 **4.1.15.56 x64** 的模块与函数指纹；微信升级后需要重新适配。macOS、Linux 不支持本次原生采集。
+</div>
 
-## 什么是账号池？有什么风险？
+![公众号工作台，按行展示采集、下载和导出入口](docs/screenshots/workbench-sources.png)
 
-这里提醒的**“账号池”**，指客户端收集用户个人微信号的有效凭证，将其上传并集中保存在第三方云端，再由云端调用这些凭证，以相应用户的账号身份发起采集请求。**关键在于：个人有效凭证离开了用户本机，第三方获得了使用这些凭证发起请求的能力。**
+<p align="center"><sub>公众号工作台 · 界面演示使用虚构公众号与文章</sub></p>
 
-这类凭证不一定是微信密码，也可能是会话密钥、令牌等身份凭证；具体可用于哪些请求，取决于凭证本身的权限与有效期。用户在客户端发起一次操作，不代表其凭证在云端只会用于这一次操作。
+## 主要特性
 
-```mermaid
-flowchart TD
-    subgraph L[用户本机]
-        U[用户登录个人微信号] --> C[第三方客户端获取有效凭证]
-    end
-    C -->|上传个人有效凭证| P
-    subgraph S[第三方云端]
-        P[账号池：集中保存多个用户的有效凭证]
-        T[云端采集任务] --> D[选取并调用用户凭证]
-        P --> D
-    end
-    D -->|以相应用户的账号身份发起请求| W[微信服务]
-    W -.->|可能触发限制或封禁| R[风险由凭证所属的个人微信号承担]
-    P -.-> E[凭证可能被泄露、转用或超出授权使用]
-```
+### 按公众号采集，按任务管理
 
-- **请求由云端发起，账号风险由用户承担**：用户未必知道凭证被用于哪些任务、调用多少次；异常请求仍可能导致个人微信号被限制或封禁，账号池不提供防封保证。
-- **凭证上传后，使用范围难以核实**：用户难以独立确认云端是否复制、共享凭证，是否用于其他人的任务，以及是否在用户停止使用后继续调用。关闭本地客户端，不等于云端凭证已被删除或失效。
-- **集中保存放大泄露风险**：云端一旦泄露或凭证被滥用，可能同时影响多个用户，并暴露凭证权限范围内可访问的数据。
+通过主页识别登记公众号，在同一行完成采集、下载和导出。首页同步获取最新文章，历史采集支持指定篇数或截止日期。任务保存检查点，暂停后可继续，更新会话后可沿原位置续采。
 
-**MPider 使用本机已登录的个人微信会话，不将个人微信凭证上传到云端账号池，但本地使用同样存在封号风险。默认请求间隔与预算只是本地控制措施，不是平台认可的安全额度，也不是防封承诺。**
+### 自由选择下载范围
 
-## 闭源与“假开源”客户端，为什么要谨慎？
+支持单篇下载、勾选下载和按公众号填写下载篇数。默认保存封面与正文图片，也可选择只下载正文。已有正文和已入队文章自动去重，下载进度持续保存在本机。
 
-客户端运行在自己的电脑上，不代表个人凭证一定留在本机。**对于未开源的客户端，用户难以通过源码核查核心采集行为，请谨慎使用，不要仅凭“本地运行”或“安全防封”等宣传交出个人微信凭证。**
+### Markdown 与 HTML 同时导出
 
-即便项目宣称开源，也应检查是否公开了以下内容：
+一次导出生成两种文章格式，并附可搜索的 `index.html`、共享图片目录和 CSV 清单。支持导出部分已下载文章，HTML 保留正文排版，Markdown 便于检索和后续整理。
 
-- **核心采集逻辑**：实际发起请求、调用微信协议的实现是否公开，还是只有界面，关键功能仍依赖不公开的程序或云端服务。
-- **凭证处理逻辑**：凭证如何获取、保存、使用和失效，是否上传到第三方服务器、进入账号池，是否存在未说明的外部调用。
-- **客户端与源码的对应关系**：是否有对应版本的完整源码、依赖和构建说明，能否据此构建客户端并核查发布包的来源。
+### 推送发现与链接队列
 
-**只公开外围代码，却将未公开核心采集逻辑的客户端宣传为可完整核查的开源软件，属于本项目提醒用户警惕的“假开源”。完整开源有助于审查，但仍不是没有凭证泄露风险或封号风险的保证。**
+后台发现本机微信中的公众号文章链接，保存到待处理队列。链接处理可独立开启，校验后去重入库。停止扫描后，已保存的链接仍可继续处理。
 
-## 软件截图
+### 清晰的进度与请求记录
 
-以下截图来自本版本前端，使用虚构公众号与演示文章展示操作，不代表真实账号或实际采集结果。
+首页用紧凑行展示公众号，任务页显示数量、百分比和运行状态。底栏提供活动任务入口，系统日志支持筛选与导出。列表、正文和图片请求分别配置间隔与预算，并按各自的并发规则调度。
 
-**公众号：先监测登记，再按公众号同步首页、采集历史、下载正文。**
+### 本地存储与离线阅读
 
-![主页识别与采集工作台](docs/screenshots/workbench-sources.png)
+文章和任务进度保存在本机，SQLite 管理文章索引，正文与图片归档到本地文件。已下载文章可在客户端阅读，也可通过导出目录在浏览器中离线浏览。软件窗口关闭后进入系统托盘，后台任务继续运行。
 
-**文章库：按公众号筛选，下载后阅读，同时导出 Markdown 和 HTML。**
+## 界面预览
 
-![文章库与下载、阅读、导出操作](docs/screenshots/workbench-articles.png)
+以下截图使用虚构公众号与文章，展示当前前端的操作界面。
 
-**任务：分别管理首页同步、历史采集与正文下载，暂停后保留进度。**
+### 文章库
 
-![历史采集任务与检查点进度](docs/screenshots/workbench-tasks.png)
+按公众号筛选文章，勾选后批量下载或导出，已保存正文可直接阅读。
 
-## 可以做什么
+![文章库，按公众号筛选并批量处理文章](docs/screenshots/workbench-articles.png)
 
-| 功能 | 使用方式 |
-| --- | --- |
-| 推送监测 | 后台发现本机微信中的文章链接，独立处理已保存链接并去重入库，详见[使用说明](docs/push-monitor.md) |
-| 主页识别 | 开启后在微信手动打开公众号主页，登记公众号与会话；识别本身不入库文章 |
-| 同步最新文章 | 每个公众号单独获取首页，去重入库，不改变历史检查点 |
-| 采集历史文章 | 按追加篇数或截止日期创建任务，支持暂停和检查点续采 |
-| 更新会话后续采 | 按提示手动打开目标主页，完整新会话到齐后继续原任务 |
-| 正文与图片下载 | 单篇、勾选或整号加入统一持久化队列，跳过已有正文 |
-| 离线阅读与导出 | 同时生成 Markdown、保留正文排版的 HTML、可搜索目录、共享图片和 CSV 清单 |
-| 请求与任务管理 | 分别配置列表、正文和图片的间隔、并发与预算，查看请求记录和系统日志 |
-| 客户端更新 | Windows 安装版检查 GitHub 正式版本，预下载并验签，确认后安装与重启 |
+### 任务进度
 
-列表默认每页 10 条，可切换 20 / 50 / 100 条。底栏显示监测状态与活动任务进度，点击进度进入对应任务标签。游标实验室默认隐藏，可在系统设置中开启。
+首页同步、历史采集和文章下载分别管理。任务进度展示目标完成情况，同时保留实际返回与入库数量。
 
-暂不采集视频、音频、评论、阅读量和互动数据。不提供云端托管、无人登录的 Windows 服务或自动唤醒。
+![历史采集任务，展示进度、运行状态与操作入口](docs/screenshots/workbench-tasks.png)
 
 ## 下载与安装
 
-环境要求：**Windows 10/11 x64**、[WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/) 和已登录的 **微信 4.1.15.56 x64**。首次登记公众号与更新会话时，桌面需要解锁且可交互。
+运行环境为 **Windows 10/11 x64**。当前原生采集已验证的微信版本为 **4.1.15.56 x64**，首次登记公众号与更新会话时需要登录微信，并保持桌面可交互。
 
-在 [GitHub Releases](https://github.com/areyoubugcoder/mpider/releases/latest) 选择：
+从 [GitHub Releases](https://github.com/ZyFanTJ/mpider/releases/latest) 获取对应版本，文件与验证范围以发行页面为准。
 
-| 下载文件 | 用途 |
+| 安装方式 | 使用说明 |
 | --- | --- |
-| `MPider_2.0.1_x64-setup.exe` | 推荐，NSIS 安装版，支持应用内更新 |
-| `MPider_2.0.1_x64_zh-CN.msi` | 中文 MSI 安装版 |
-| `MPider-v2.0.1-windows-x64.zip` | 便携版，完整解压后运行 `MPider.exe`，保留旁边的 `runtime/` |
-| `SHA256SUMS` | 核对下载文件的 SHA-256 |
+| Windows x64 安装包 | 双击 EXE，按中文向导安装，从开始菜单启动 MPider |
+| 精简安装包 | 携带 Python / Frida，自动检测 WebView2，缺少时联网下载安装。向导提供微软手动下载链接 |
+| 完整离线安装包 | 携带 WebView2 离线安装程序，适合提前准备运行环境 |
+| 便携 ZIP | 完整解压后运行 `MPider.exe`，保留旁边的 `runtime/` |
+| `SHA256SUMS` | 校验下载文件的 SHA-256 摘要 |
 
-三个客户端包均携带 Python **3.12.10**、Frida **17.23.3**、cryptography **50.0.2** 及所需许可，无需另外安装 Python、Node.js、pnpm 或 Rust。微信和 WebView2 需要自行安装。不要只复制便携包内的 EXE。
-
-安装包附带应用更新签名，用于 MPider 验证更新文件；它不等同于 Windows 开发者代码签名，系统仍可能提示发布者未知。可先核对附件摘要：
+安装包附带 Python **3.12.10**、Frida **17.23.3** 和 cryptography **50.0.2** 及相关依赖，目标电脑可直接使用包内运行环境。签名更新配置与 Windows 代码签名状态以对应发行说明为准。
 
 ```powershell
 Get-FileHash .\MPider_2.0.1_x64-setup.exe -Algorithm SHA256
 ```
 
+安装、迁移和备份的完整步骤见 [Windows 独立运行说明](docs/windows-standalone.md)。
+
 ## 开始采集
 
-1. **登记公众号**：打开 MPider，在「公众号」页开启「主页识别」，再到微信手动打开目标公众号主页，等待名称与会话登记。此时不会自动采集文章。
-2. **获取文章列表**：在对应公众号行点击「同步最新文章」获取首页；需要历史内容时，点击「采集历史文章」，选择追加篇数或截止日期。
-3. **处理会话更新**：任务提示需要新会话时，按提示在微信重新打开或刷新该公众号主页。完整会话到齐后会沿原任务继续，程序不会替你点击微信窗口。
-4. **下载正文**：在公众号行点击「下载」并填写篇数，或在文章库勾选指定文章。默认下载封面和正文图片，取消勾选即可只保存正文。
-5. **阅读与导出**：已下载文章显示「阅读 / 导出」。在公众号行填写导出篇数，或在文章库勾选指定文章，即可将已有正文导出为 Markdown 和 HTML。
+1. **登记公众号**。在「公众号」页开启「主页识别」，到微信手动打开目标公众号主页，等待名称与会话登记。
+2. **采集文章列表**。在公众号行点击「采集」，选择同步最新文章或采集历史文章，按需要设置篇数或截止日期。
+3. **下载正文**。点击「下载」并填写篇数，或在文章库勾选指定文章。只保存正文时，取消勾选「下载封面和正文图片」。
+4. **阅读与导出**。在文章库阅读已有正文，或选择导出篇数，生成 Markdown、HTML 和文章索引。
+5. **继续任务**。在任务页暂停或继续操作。需要更新会话时，按提示在微信重新打开目标公众号主页。
 
-首页同步、历史采集、正文下载在「任务」的三个标签中分别管理。关闭窗口后应用留在托盘，任务继续运行；从托盘退出才停止程序。重启后未完成任务保留检查点并暂停，由你选择继续。
+采集目标与整页入库数量分别记录。例如目标为 30 篇、整页返回 72 篇时，可继续选择下载其中 30 篇，再导出已下载文章中的指定篇数。
 
-升级前备份「系统设置」显示的完整数据目录。便携版的数据也存放在应用数据目录，通常不在 EXE 旁；只备份数据库会遗漏正文、图片和受保护会话文件。便携版迁移到安装版及更新操作见[客户端更新说明](docs/app-updates.md)。
+重启应用后，未完成任务保留检查点并暂停，由用户选择继续。备份时保留「系统设置」显示的完整数据目录，正文归档与数据库一起迁移。受 Windows DPAPI 保护的会话材料绑定当前用户，换机器后需重新登记会话。
 
-## 当前采集方案
+## 技术栈
 
-```mermaid
-flowchart TD
-    A[开启主页识别] --> B[在微信手动打开公众号主页]
-    B --> C[登记公众号、完整会话与首页游标]
-    C --> D{按公众号发起列表任务}
-    D --> E[同步最新文章：只获取首页]
-    D --> F[采集历史：按篇数或截止日期]
-    E --> G[请求策略与原生会话协议]
-    F --> G
-    G --> H{会话是否有效}
-    H -->|有效| I[保存文章列表与任务检查点]
-    H -->|需更新| J[提示用户手动重新打开目标主页]
-    J --> K[登记新会话并继续原任务]
-    K --> G
-    I --> L[单独下载正文与图片]
-    L --> M[离线阅读]
-    L --> N[同时导出 Markdown 与 HTML]
-```
+<p>
+  <img src="https://img.shields.io/badge/Tauri-2-24C8D8?style=flat-square&amp;logo=tauri&amp;logoColor=white" alt="Tauri 2">
+  <img src="https://img.shields.io/badge/Rust-DEA584?style=flat-square&amp;logo=rust&amp;logoColor=black" alt="Rust">
+  <img src="https://img.shields.io/badge/React-18-149ECA?style=flat-square&amp;logo=react&amp;logoColor=white" alt="React 18">
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&amp;logo=typescript&amp;logoColor=white" alt="TypeScript">
+  <img src="https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=flat-square&amp;logo=tailwindcss&amp;logoColor=white" alt="Tailwind CSS">
+  <img src="https://img.shields.io/badge/Python-3776AB?style=flat-square&amp;logo=python&amp;logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/SQLite-003B57?style=flat-square&amp;logo=sqlite&amp;logoColor=white" alt="SQLite">
+</p>
 
-Tauri / React 提供界面，Rust 管理 SQLite、调度、请求策略和本地归档。Python / Frida 在本机观察已登录微信的原生列表调用；获取会话后，工作进程构造与验证协议请求，Rust 原子保存文章、游标和任务进度。首页同步和历史采集分别维护进度，会话更新后可沿检查点继续。
+| 组件 | 职责 |
+| --- | --- |
+| Tauri 2 · Rust | 桌面应用、任务调度、请求策略与本地归档 |
+| React 18 · TypeScript | 工作台界面、交互与状态展示 |
+| Tailwind CSS · Radix UI | 界面样式与交互组件 |
+| Python · Frida | 本机微信原生调用观察与会话工作进程 |
+| SQLite | 文章索引、任务状态与请求账本 |
+| article-md · htmd | 正文解析与 Markdown 转换 |
 
-**使用当前工作台不需要安装根证书、修改系统代理、标定点击坐标或配置种子链接。** 详细流程见[实现原理](docs/how-it-works.md)和[协议说明](docs/wechat-session-protocol.md)。
+实现流程见 [实现原理](docs/how-it-works.md)，原生会话与检查点见 [协议说明](docs/wechat-session-protocol.md)。
 
 ## 请求控制与适配范围
 
-初始列表间隔为 **90–120 秒**，滚动 24 小时预算 **60 次**；正文与图片初始间隔各 **1 秒**，并发各 **4**。这些是本地默认配置，**不是已证明安全的平台配额**，可在「限流配置」自行调整，见[频率与预算说明](docs/request-policy.md)。
+列表采集的初始间隔为 **90–120 秒**，滚动 24 小时预算为 **60 次**。正文与图片的初始间隔各为 **1 秒**，并发各为 **4**。可在「限流配置」中调整，具体规则见 [频率与预算说明](docs/request-policy.md)。
 
-微信可能要求验证、使会话失效、限制请求或账号。Frida 附加已有导致微信退出的记录，长期稳定性仍需验证。程序遇到不匹配的模块或函数指纹会停止，不能仅改微信版本号强行适配。出现验证或频率限制时应停止任务并查看日志。
-
-会话有效期与游标可复用时间分别判断；会话过期时应更新会话，再判断历史检查点是否可继续使用，不承诺统一有效期。真实采集、长期稳定性、安装升级分别验证；每个版本的发行验收结果见 [GitHub Releases](https://github.com/areyoubugcoder/mpider/releases)。
+采集受微信版本、会话状态和服务端访问限制影响。使用个人微信会话存在账号受限或封禁风险，默认参数的安全性未经平台确认。Frida 附加可能引发微信退出，微信升级后需要重新验证适配。操作前可查看 [常见问题](docs/faq.md) 中的适配与使用说明。
 
 ## 数据与隐私
 
-文章、设置、请求账本、日志与任务进度保存在本机，无需注册 MPider 账号，不自动向维护者上传文章库或诊断材料。会话密钥、原始游标与协议证据由当前 Windows 用户的 DPAPI 保护；普通文章导出不读取受保护会话文件。这些文件不能直接跨 Windows 用户使用，正文和导出文件本身不加密。
+文章库与任务进度保存在本机，正文和图片按文章归档，日志也写入本地数据目录。会话密钥与协议证据使用当前 Windows 用户的 DPAPI 保护，普通文章导出使用本地归档内容。
 
-采集会访问微信服务及文章图片来源。底栏广告在启动及每 30 分钟从 GitHub 读取公开配置；启用应用更新的正式构建启动时检查公开版本清单，不自动下载或安装。上述检查不附带本地账号、Cookie、会话或文章库，GitHub 仍会收到 IP 等常规网络信息。外部产品、原文和反馈链接在点击后通过系统浏览器访问，详见[广告说明](docs/advertisements.md)。
+采集访问微信服务与文章图片来源。底栏推荐位定期从 GitHub 读取公开配置，配置签名更新的构建会检查公开更新清单。相关请求的数据范围见 [广告说明](docs/advertisements.md) 与 [客户端更新说明](docs/app-updates.md)。反馈问题前，请检查并脱敏日志，保护会话文件和数据库。
 
-反馈前请检查并脱敏日志；不要上传数据库、`workbench/private/`、会话文件或原始抓包。安全问题见[安全政策](SECURITY.md)。只获取和保存你有权处理的内容，文章版权归原作者及权利人所有。
-
-## 后续 TODO
-
-以下为计划方向，尚未实现；优先级与范围会随使用反馈调整。
-
-- [ ] **自动化采集**：按公众号配置定时同步、增量采集与正文下载，支持暂停、预算控制和会话过期提醒。
-- [ ] **优化导出**：完善目录与文件命名、文章筛选、增量导出、索引和缺图处理，提升批量导出的可读性。
-- [ ] **采集稳定性**：改进会话恢复、异常分类与长时间运行验证，持续适配新版微信。
-- [ ] **任务体验**：优化批量操作、进度展示、失败重试与诊断信息。
-- [ ] **数据管理**：完善备份恢复、归档迁移和本地存储清理。
+文章版权归原作者及权利人所有，请在授权范围内获取和保存内容。安全问题可通过 [安全政策](SECURITY.md) 中的渠道反馈。
 
 ## 开发与贡献
 
-开发需要 Node.js **24+**、**pnpm**、Rust（版本见 `rust-toolchain.toml`）；Windows 构建还需 Visual Studio C++ Build Tools 与 Windows SDK。改动在独立 Git worktree 中进行：
+开发环境使用 Node.js **24+**、**pnpm** 和 Rust。Rust 版本见 `rust-toolchain.toml`，Windows 构建需要 Visual Studio C++ Build Tools 与 Windows SDK。
 
 ```sh
 pnpm install --frozen-lockfile
@@ -188,10 +158,17 @@ cargo test --locked -p mpider-core -p article-md -p mpider-tauri
 pnpm tauri dev
 ```
 
-Windows 测试 runner、Python 离线测试和完整客户端构建见[Windows 构建说明](docs/windows-standalone.md)。日常 CI 在 PR 中按改动路径选择前端、Windows Rust、原生桥或 CI 配置检查，合并到 main 后按相同规则运行并刷新 Rust 缓存；纯公开资料只运行轻量路径判断与汇总，编入界面的更新记录、FAQ、实验室与请求策略文档仅触发前端检查。共享契约改动联动验证，手动触发可运行全部检查，详细规则见[贡献指南](CONTRIBUTING.md)。客户端发行仅面向 Windows x64，标签必须与项目版本一致，完成构建、离线测试、便携包解压自检与签名清单生成后创建 Release 草稿。
+| 文档 | 内容 |
+| --- | --- |
+| [贡献指南](CONTRIBUTING.md) | 开发流程、检查规则与提交约定 |
+| [Windows 构建说明](docs/windows-standalone.md) | 运行环境、打包与发行校验 |
+| [文章导出](docs/article-export.md) | 格式、目录结构与图片处理 |
+| [推送监测](docs/push-monitor.md) | 链接发现与队列处理 |
+| [系统日志](docs/system-logs.md) | 日志筛选、诊断与导出 |
+| [实验室](docs/laboratory.md) | 游标实验、结果解读与报告 |
+| [更新记录](CHANGELOG.md) | 版本变更 |
+| [第三方声明](THIRD-PARTY-NOTICES.md) | 依赖来源与许可 |
 
-[贡献指南](CONTRIBUTING.md) · [实现原理](docs/how-it-works.md) · [更新记录](CHANGELOG.md) · [第三方声明](THIRD-PARTY-NOTICES.md)
+项目采用 [MIT 许可证](LICENSE)。
 
-本项目以 [MIT](LICENSE) 开源。
-
-希望持续订阅公众号更新，可了解 [mp2rss](https://mp2rss.bugcode.dev/)；需要历史文章下载服务，可了解[公众号历史文章下载](https://mphistory.followto.us/)。它们是独立外部服务，点击入口不会附带 MPider 本地会话或文章库。
+持续 RSS 订阅可了解 [MP2Rss](https://mp2rss.bugcode.dev/)，历史文章下载服务可了解 [MPHistory](https://mphistory.followto.us/)。两个链接分别指向独立服务。

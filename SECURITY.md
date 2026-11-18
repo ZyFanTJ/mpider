@@ -4,7 +4,7 @@ MPider 当前工作台在本机通过 Frida 观察已登录微信并保存会话
 
 ## 报告漏洞
 
-请通过 GitHub 的 [私密漏洞报告](https://github.com/areyoubugcoder/mpider/security/advisories/new) 联系维护者，不要在公开 Issue 中提交利用细节或敏感材料。
+请通过 GitHub 的 [私密漏洞报告](https://github.com/ZyFanTJ/mpider/security/advisories/new) 联系维护者，不要在公开 Issue 中提交利用细节或敏感材料。
 
 建议说明受影响版本、可复现步骤、预期与实际行为，优先使用虚构数据。以下情况属于安全问题：
 

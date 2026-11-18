@@ -233,7 +233,7 @@ def main():
         "此程序未代码签名；首次识别依赖微信版本，Frida 仍可能引发微信崩溃。\n"
         "仅在自己有权访问的范围内使用；请求预算和冷却不保证账号不会受限制。\n"
         "关闭窗口进入托盘，从托盘退出才停止程序。\n"
-        "反馈：https://github.com/areyoubugcoder/mpider/issues/new/choose\n",
+        "反馈：https://github.com/ZyFanTJ/mpider/issues/new/choose\n",
         encoding="utf-8-sig",
     )
     files = {path.relative_to(stage).as_posix(): digest(path)

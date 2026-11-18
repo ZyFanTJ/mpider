@@ -3,8 +3,8 @@ export const product = {
   name: 'MPider',
   title: 'MPider｜免费开源的公众号文章批量下载工具',
   description: '免费开源的公众号文章下载工具。保存正文与图片到自己的 Windows 电脑，离线阅读，同时导出 Markdown 与 HTML。了解使用方法、账号风险与开源核查。',
-  repository: 'https://github.com/areyoubugcoder/mpider',
-  download: 'https://github.com/areyoubugcoder/mpider/releases/latest',
+  repository: 'https://github.com/ZyFanTJ/mpider',
+  download: 'https://github.com/ZyFanTJ/mpider/releases/latest',
   community: 'https://qm.qq.com/q/s4JavFxA3e',
   demo: 'https://xhslink.cn/o/8c23uHExcT6',
 };

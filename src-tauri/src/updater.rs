@@ -5,7 +5,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Manager, State};
 use tauri_plugin_updater::{Update, Updater, UpdaterExt};
 
-pub const RELEASES_URL: &str = "https://github.com/areyoubugcoder/mpider/releases";
+pub const RELEASES_URL: &str = "https://github.com/ZyFanTJ/mpider/releases";
 
 #[derive(Clone, Serialize)]
 pub struct UpdateStatus {

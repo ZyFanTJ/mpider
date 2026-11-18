@@ -13,7 +13,7 @@
 ## 版本与接口
 
 - 当前版本取 Tauri 项目配置（当前为 `2.0.1`），`package.json`、根 `Cargo.toml` 的工作区版本、`src-tauri/tauri.conf.json` 必须一致。发布标签为 `v<当前项目版本>`，不根据历史 GitHub Release 自动推算或递增。
-- 更新地址固定为 `https://github.com/areyoubugcoder/mpider/releases/latest/download/latest.json`，公开仓库无需在客户端放 GitHub Token。仅更高的稳定语义版本有效，同版、旧版、预发布版均不安装。草稿未公开时不会被客户端下载。
+- 更新地址固定为 `https://github.com/ZyFanTJ/mpider/releases/latest/download/latest.json`，公开仓库无需在客户端放 GitHub Token。仅更高的稳定语义版本有效，同版、旧版、预发布版均不安装。草稿未公开时不会被客户端下载。
 - 静态清单包含 `version`、`pub_date`、`notes` 和 `platforms`；目前仅含 `windows-x86_64`。平台项含 `url` 和 `.sig` 文件的完整内容 `signature`。
 - Tauri updater 负责 HTTPS 请求、平台选择与签名验证，版本清单和安装包通过 GitHub Release 附件分发，不增加业务 HTTP 服务或数据库表。
 - 更新签名强制绑定版本（`requireSignedVersion`）。下载时、缓存恢复时、安装时均校验签名，防止缓存修改、旧包冒充新版。使用 Tauri CLI 2.12.4 或之后的兼容 v2 版本生成版本绑定签名。

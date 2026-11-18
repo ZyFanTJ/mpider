@@ -26,7 +26,7 @@ const UpdateContext = createContext<{
   status?: UpdateStatus; error: string | null; busy: boolean;
   run: (command: Command) => Promise<void>; requestInstall: () => void;
 } | null>(null);
-const releasesUrl = "https://github.com/areyoubugcoder/mpider/releases";
+const releasesUrl = "https://github.com/ZyFanTJ/mpider/releases";
 const queryKey = ["app-updater"];
 const mb = (size: number) => `${(size / 1024 / 1024).toFixed(1)} MB`;
 

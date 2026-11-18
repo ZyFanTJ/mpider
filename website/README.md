@@ -16,7 +16,7 @@ pnpm verify
 
 预览固定使用 `http://127.0.0.1:3000`。端口被占用时先处理冲突，不自动切换端口。
 
-默认部署地址为 `https://areyoubugcoder.github.io/mpider/`。`SITE_URL` 同时决定资源前缀、canonical、RSS 与站点地图，例如：
+默认部署地址为 `https://zyfantj.github.io/mpider/`。`SITE_URL` 同时决定资源前缀、canonical、RSS 与站点地图，例如：
 
 ```sh
 SITE_URL=https://example.com/ pnpm build

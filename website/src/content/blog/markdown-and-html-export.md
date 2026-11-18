@@ -23,7 +23,7 @@ HTML 文件可以由浏览器打开，适合把已归档的文章连同本地图
 
 文章列表、正文保存与导出是不同步骤。进行批量或整号导出之前，先确认目标文章的正文已经下载完成，再检查导出结果中的文件、索引与图片。
 
-MPider 的导出结果会同时包含两种格式，以及已保存图片和相关清单。具体输出内容与操作说明见[文章导出文档](https://github.com/areyoubugcoder/mpider/blob/main/docs/article-export.md)。
+MPider 的导出结果会同时包含两种格式，以及已保存图片和相关清单。具体输出内容与操作说明见[文章导出文档](https://github.com/ZyFanTJ/mpider/blob/main/docs/article-export.md)。
 
 ## 保留来源，避免把归档变成失去上下文的素材
 

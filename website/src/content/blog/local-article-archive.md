@@ -13,7 +13,7 @@ MPider 是免费开源的 Windows 公众号文章下载工具，支持将正文�
 
 MPider 使用本机已登录的个人微信会话。首次登记公众号、更新会话时，需要你在微信手动打开目标公众号主页；它不会替你点击微信窗口。
 
-当前支持的 Windows 与微信版本、安装要求，均以 [GitHub 正式发行说明](https://github.com/areyoubugcoder/mpider/releases/latest)为准。微信升级后可能需要重新适配，不要把旧版本的验证结果直接套用到新版本。
+当前支持的 Windows 与微信版本、安装要求，均以 [GitHub 正式发行说明](https://github.com/ZyFanTJ/mpider/releases/latest)为准。微信升级后可能需要重新适配，不要把旧版本的验证结果直接套用到新版本。
 
 **所有使用个人微信号的客户端都可能存在封号风险，MPider 也不例外。** 本地运行、开源和低频请求都不能保证账号安全，避免使用承载重要联系人、工作或支付用途的账号。
 
@@ -34,6 +34,6 @@ MPider 使用本机已登录的个人微信会话。首次登记公众号、更�
 
 ## 备份要覆盖完整数据目录
 
-正文、图片、数据库与任务状态不是同一个文件。备份和迁移前，查看“系统设置”显示的数据目录，并按[数据与安装说明](https://github.com/areyoubugcoder/mpider/blob/main/docs/windows-standalone.md)保留完整数据。
+正文、图片、数据库与任务状态不是同一个文件。备份和迁移前，查看“系统设置”显示的数据目录，并按[数据与安装说明](https://github.com/ZyFanTJ/mpider/blob/main/docs/windows-standalone.md)保留完整数据。
 
 不要把数据库、会话文件或未经脱敏的日志发到公开群聊、Issue 或其他网站。本地保存也需要由你妥善管理。

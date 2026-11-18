@@ -51,7 +51,7 @@ export function App() {
         {showLaboratory && view === "lab" && <CursorLab onLogs={id => { setLogExperiment(id); setView("logs"); }} />}
         {view === "settings" && <WorkbenchSettings showLaboratory={showLaboratory} onLaboratoryChange={changeLaboratory} />}
         {view === "logs" && <SystemLogs initialExperimentId={logExperiment} />}
-        {view === "faq" && <Faq onNav={setView} />}
+        {view === "faq" && <Faq />}
       </main>
     </div>
     <footer className="flex h-10 shrink-0 items-center gap-3 border-t px-3 text-xs text-muted-foreground">

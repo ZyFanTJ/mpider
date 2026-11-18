@@ -33,7 +33,7 @@ test("Windows 产物生成可下载清单，不包含 macOS", () => temporary(ro
     writeFileSync(join(dir, `${filename}.sig`), `${target}-signature`);
     stageArtifacts(dir, staged, target, version, true);
   }
-  const manifest = createManifest(staged, version, "areyoubugcoder/mpider");
+  const manifest = createManifest(staged, version, "ZyFanTJ/mpider");
   assert.equal(manifest.version, version);
   assert.deepEqual(Object.keys(manifest.platforms), ["windows-x86_64"]);
   assert.match(manifest.platforms["windows-x86_64"].url, /_x64-setup.exe$/);
@@ -42,9 +42,9 @@ test("Windows 产物生成可下载清单，不包含 macOS", () => temporary(ro
 test("缺包、缺签名和缺平台都阻止生成更新发布", () => temporary(root => {
   const version = projectVersion();
   assert.throws(() => stageArtifacts(root, join(root, "mac"), "aarch64-apple-darwin", version, true), /不支持/);
-  assert.throws(() => createManifest(root, version, "areyoubugcoder/mpider"), /缺少/);
+  assert.throws(() => createManifest(root, version, "ZyFanTJ/mpider"), /缺少/);
   assert.throws(() => stageArtifacts(root, join(root, "out"), "x86_64-pc-windows-msvc", version, true), /缺少/);
   writeFileSync(join(root, `MPider_${version}_x64-setup.exe`), "假安装包");
   assert.throws(() => stageArtifacts(root, join(root, "out"), "x86_64-pc-windows-msvc", version, true), /缺少签名/);
-  assert.throws(() => createManifest(root, version, "areyoubugcoder/mpider"), /缺少/);
+  assert.throws(() => createManifest(root, version, "ZyFanTJ/mpider"), /缺少/);
 }));

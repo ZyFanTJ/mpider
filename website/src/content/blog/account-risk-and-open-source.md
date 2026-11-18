@@ -33,4 +33,4 @@ draft: false
 
 MPider 选择免费开源，让核心采集逻辑与凭证处理可供核查。它使用本机已登录的个人微信会话，不将个人微信凭证上传云端账号池，但本地使用仍有封号风险。
 
-本项目反对隐瞒凭证上传、未经同意或超出授权使用个人账号。你可以查看[公开源码](https://github.com/areyoubugcoder/mpider)和[安全说明](https://github.com/areyoubugcoder/mpider/blob/main/SECURITY.md)，再决定是否使用。
+本项目反对隐瞒凭证上传、未经同意或超出授权使用个人账号。你可以查看[公开源码](https://github.com/ZyFanTJ/mpider)和[安全说明](https://github.com/ZyFanTJ/mpider/blob/main/SECURITY.md)，再决定是否使用。
